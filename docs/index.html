@@ -7,16 +7,16 @@
     <meta name="description" content="Web Time is a private, native macOS menu-bar app that gives distracting websites a daily allowance and blocks them when time runs out.">
     <meta property="og:title" content="Web Time for macOS">
     <meta property="og:description" content="Your websites. On your time.">
-    <meta property="og:image" content="assets/web-time.svg">
+    <meta property="og:image" content="assets/web-time-1024.png">
     <title>Web Time — Website allowances for macOS</title>
-    <link rel="icon" href="assets/web-time.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/web-time-64.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js" defer></script>
   </head>
   <body>
     <header class="site-header" aria-label="Primary navigation">
       <a class="wordmark" href="#top" aria-label="Web Time home">
-        <img src="assets/web-time.svg" alt="" width="28" height="28">
+        <img src="assets/web-time-1024.png" alt="" width="28" height="28">
         <span>Web Time</span>
       </a>
       <nav>
@@ -39,38 +39,9 @@
           <p class="requirements">Requires macOS 13 or later · Free and open source</p>
         </div>
 
-        <div class="hero-visual reveal" aria-label="Web Time menu showing website allowances">
+        <div class="hero-visual reveal" aria-label="Web Time statistics window">
           <div class="ambient-ring" aria-hidden="true"></div>
-          <div class="menu-bar-demo">
-            <div class="menu-topline">
-              <span>9:41</span>
-              <span class="menu-status"><span class="menu-clock" aria-label="Web Time"></span></span>
-            </div>
-            <div class="menu-popover">
-              <div class="usage-row active">
-                <div class="site-icon youtube">▶</div>
-                <div class="usage-copy"><strong>YouTube</strong><span>1h 28m left · 25% used · 2h set</span><b><i style="--remaining:.75"></i></b></div>
-                <span class="state-dot" aria-label="Counting"></span>
-              </div>
-              <div class="usage-row">
-                <div class="site-icon instagram">◎</div>
-                <div class="usage-copy"><strong>Instagram</strong><span>48m left · 18% used · 1h set</span><b><i style="--remaining:.82"></i></b></div>
-                <span class="pause" aria-label="Paused">Ⅱ</span>
-              </div>
-              <div class="usage-row">
-                <div class="site-icon twitch">◧</div>
-                <div class="usage-copy"><strong>Twitch</strong><span>36m left · 40% used · 1h set</span><b><i style="--remaining:.60"></i></b></div>
-                <span class="pause" aria-label="Paused">Ⅱ</span>
-              </div>
-              <div class="menu-rule"></div>
-              <div class="menu-action">Statistics… <span>⌘S</span></div>
-              <div class="menu-rule"></div>
-              <div class="menu-muted">Controls locked</div>
-              <div class="menu-action">Unlock controls…</div>
-              <div class="menu-action disabled">Manage websites…</div>
-              <div class="menu-action disabled">Quit Web Time</div>
-            </div>
-          </div>
+          <img class="hero-product-shot" src="assets/web-time-statistics.png" alt="Web Time showing daily and weekly usage for YouTube, Instagram, and Twitch">
         </div>
       </section>
 
@@ -86,21 +57,10 @@
           <h2>See where the time went.</h2>
           <p>Screen Time–style daily and weekly charts show usage by website, hour, and allowance. Everything stays on your Mac.</p>
         </div>
-        <div class="statistics-window reveal" aria-label="Web Time statistics preview">
-          <div class="window-toolbar"><span class="traffic red"></span><span class="traffic yellow"></span><span class="traffic green"></span><strong>App &amp; Website Activity</strong><span class="updated">Updated just now</span></div>
-          <div class="stats-body">
-            <div class="stats-heading"><div><small>Usage</small><strong>2h 14m</strong></div><div class="date-control">‹ <b>Today</b> ›</div></div>
-            <div class="chart" aria-hidden="true">
-              <span style="--h:36%;--c:#0a84ff"></span><span style="--h:68%;--c:#0a84ff"></span><span style="--h:42%;--c:#64d2ff"></span><span style="--h:84%;--c:#0a84ff"></span><span style="--h:55%;--c:#30d158"></span><span style="--h:28%;--c:#0a84ff"></span><span style="--h:76%;--c:#bf5af2"></span><span style="--h:48%;--c:#0a84ff"></span><span style="--h:92%;--c:#0a84ff"></span><span style="--h:62%;--c:#64d2ff"></span><span style="--h:35%;--c:#0a84ff"></span><span style="--h:70%;--c:#30d158"></span>
-            </div>
-            <div class="stats-table">
-              <div class="table-head"><span>Website</span><span>Time</span><span>Daily Limit</span></div>
-              <div><span><i class="site-icon youtube">▶</i>YouTube</span><span>1h 17m</span><span>2h</span></div>
-              <div><span><i class="site-icon instagram">◎</i>Instagram</span><span>43m</span><span>1h</span></div>
-              <div><span><i class="site-icon twitch">◧</i>Twitch</span><span>14m</span><span>1h</span></div>
-            </div>
-          </div>
-        </div>
+        <figure class="real-statistics-window reveal">
+          <img src="assets/web-time-statistics.png" alt="The native Web Time statistics window with weekly and hourly charts and a website list">
+          <figcaption>Captured directly from Web Time using representative sample data.</figcaption>
+        </figure>
       </section>
 
       <section class="privacy" id="privacy">
@@ -116,7 +76,7 @@
       </section>
 
       <section class="final-cta">
-        <img class="cta-icon reveal" src="assets/web-time.svg" alt="Web Time icon" width="144" height="144">
+        <img class="cta-icon reveal" src="assets/web-time-1024.png" alt="Web Time icon" width="144" height="144">
         <p class="eyebrow reveal">Web Time</p>
         <h2 class="reveal">Make an hour<br>feel like yours again.</h2>
         <a class="button release-link reveal" href="https://github.com/__GITHUB_REPOSITORY__/releases/latest/download/Web-Time.dmg">Download for Mac</a>

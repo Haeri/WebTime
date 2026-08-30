@@ -44,7 +44,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var menuIsOpen = false
   private var menuRankingChangedWhileOpen = false
   private var displayedMenuSiteIDs: [String] = []
-  private lazy var statusImage = webTimeImage()
+  private lazy var idleStatusImage = webTimeImage()
 
   private var siteViews: [String: SiteProgressMenuView] = [:]
   private let controlsItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -221,14 +221,21 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private func refreshDisplay(now: Date) {
     let unlocked = controlsAreUnlocked(at: now)
     let displayedSite = configuration.sites.first(where: { activeSiteIDs.contains($0.id) })
-    statusItem.button?.image = statusImage
     if let site = displayedSite {
       let used = ledger.consumed(siteID: site.id)
       let usedFraction = site.dailyLimitSeconds > 0 ? min(1, used / site.dailyLimitSeconds) : 1
       let remaining = max(0, site.dailyLimitSeconds - used)
+      let blocked = ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
+      let favicon = faviconLoader.image(for: site) { [weak self] in
+        self?.refreshDisplay(now: Date())
+      }
+      statusItem.button?.image = activeSiteImage(
+        favicon: favicon, fallbackLetter: String(site.name.prefix(1)).uppercased(),
+        remainingFraction: 1 - usedFraction, blocked: blocked)
       statusItem.button?.toolTip =
         "\(site.name): \(format(remaining)) remaining of \(format(site.dailyLimitSeconds)) — \(Int(usedFraction * 100))% used"
     } else {
+      statusItem.button?.image = idleStatusImage
       statusItem.button?.toolTip =
         configuration.sites.isEmpty
         ? "Web Time — no websites configured" : "Web Time — nothing being counted"
@@ -435,27 +442,48 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 
   private func webTimeImage() -> NSImage {
-    let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
-      NSColor.black.setStroke()
-      let ring = NSBezierPath()
-      ring.appendArc(
-        withCenter: NSPoint(x: rect.midX, y: rect.midY), radius: 6.5,
-        startAngle: 38, endAngle: 334)
-      ring.lineWidth = 2.1
-      ring.lineCapStyle = .round
-      ring.stroke()
-      let hand = NSBezierPath()
-      hand.move(to: NSPoint(x: rect.midX, y: rect.midY))
-      hand.line(to: NSPoint(x: rect.midX, y: 13))
-      hand.move(to: NSPoint(x: rect.midX, y: rect.midY))
-      hand.line(to: NSPoint(x: 12.5, y: 6.5))
-      hand.lineWidth = 1.8
-      hand.lineCapStyle = .round
-      hand.stroke()
-      return true
-    }
+    let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+    let image =
+      NSImage(systemSymbolName: "hourglass", accessibilityDescription: "Web Time")?
+      .withSymbolConfiguration(configuration)
+      ?? NSImage(size: NSSize(width: 18, height: 18))
     image.isTemplate = true
     image.accessibilityDescription = "Web Time"
+    return image
+  }
+
+  private func activeSiteImage(
+    favicon: NSImage?, fallbackLetter: String, remainingFraction: Double, blocked: Bool
+  ) -> NSImage {
+    let quotaColor: NSColor =
+      blocked || remainingFraction <= 0.1
+      ? .systemRed : (remainingFraction <= 0.5 ? .systemYellow : .systemGreen)
+    let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+      let iconRect = NSRect(x: 1.5, y: 2, width: 14, height: 14)
+      NSGraphicsContext.saveGraphicsState()
+      NSBezierPath(roundedRect: iconRect, xRadius: 3.2, yRadius: 3.2).addClip()
+      if let favicon {
+        favicon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1)
+      } else {
+        NSColor.white.setFill()
+        iconRect.fill()
+        let attributes: [NSAttributedString.Key: Any] = [
+          .font: NSFont.systemFont(ofSize: 10, weight: .bold),
+          .foregroundColor: NSColor.black,
+        ]
+        let text = NSAttributedString(string: fallbackLetter, attributes: attributes)
+        text.draw(at: NSPoint(x: iconRect.midX - text.size().width / 2, y: iconRect.midY - 6))
+      }
+      NSGraphicsContext.restoreGraphicsState()
+      let dotRect = NSRect(x: 12.5, y: 1, width: 5, height: 5)
+      NSColor.black.withAlphaComponent(0.38).setFill()
+      NSBezierPath(ovalIn: dotRect.insetBy(dx: -1, dy: -1)).fill()
+      quotaColor.setFill()
+      NSBezierPath(ovalIn: dotRect).fill()
+      return true
+    }
+    image.isTemplate = false
+    image.accessibilityDescription = "Website currently being counted"
     return image
   }
 

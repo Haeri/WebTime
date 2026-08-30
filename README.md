@@ -15,7 +15,7 @@ This repository is intentionally small: no account, browser extension, analytics
 - Tracks multiple websites across Safari, Chrome, Firefox, Brave, Edge, native wrappers, and other local clients using network connections rather than browser history.
 - Gives every configured website its own domain set, daily allowance, usage counter, and block state.
 - Counts active transfer time only when its owning browser is the foreground app, with a short warm buffer for bursty video and feed loading.
-- Shows a favicon, activity state, exact remaining time, configured allowance, and a color-coded bar that drains for the five most-used websites, ordered by today's usage. A monochrome system template keeps the compact menu-bar icon legible against any wallpaper; hover it for exact time. Manage Websites and Statistics always retain the full list.
+- Shows a favicon, activity state, exact remaining time, configured allowance, and a color-coded bar that drains for the five most-used websites, ordered by today's usage. The compact menu-bar icon is a native monochrome hourglass while idle, then switches to the favicon and quota-color dot for the website currently being counted. Manage Websites and Statistics always retain the full list.
 - Selects one most-recently active website as the usage bucket, so background traffic cannot consume two allowances simultaneously.
 - Blocks each exhausted site's DNS names and learned delivery addresses independently. Existing TCP and QUIC states are killed at cutoff.
 - Locks administrative controls by default. A fresh 12-word manual typing challenge unlocks site editing and Quit; five minutes without app interaction relocks them.
@@ -63,7 +63,7 @@ For a published build, download `Web-Time.dmg`, open it, and double-click **Inst
 
 The installer points active macOS network services at the local DNS proxy. Before doing that, it captures the machine's current IPv4 resolver and stores it in a root-only local file for ordinary DNS forwarding. If no usable resolver can be discovered, it falls back to Cloudflare's `1.1.1.1`. The resolver file path is configured in `Resources/local.web-time.daemon.plist`.
 
-After installation, a monochrome clock appears in the menu bar:
+After installation, a monochrome hourglass appears in the menu bar:
 
 1. Choose **Unlock controls…** and manually type the generated 12-word phrase.
 2. Choose **Manage websites…** to add, edit, or remove entries and set each daily allowance.

@@ -7,16 +7,63 @@ private struct UsageChartBar {
   var values: [TimeInterval]
 }
 
+private struct UsageLegendItem {
+  var name: String
+  var duration: String
+  var color: NSColor
+}
+
+private let statisticsCanvasColor = NSColor(name: nil) { appearance in
+  appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    ? NSColor(srgbRed: 0.115, green: 0.115, blue: 0.12, alpha: 1)
+    : NSColor(srgbRed: 0.965, green: 0.965, blue: 0.97, alpha: 1)
+}
+
+private let statisticsPanelColor = NSColor(name: nil) { appearance in
+  appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    ? NSColor(srgbRed: 0.15, green: 0.15, blue: 0.155, alpha: 1)
+    : NSColor.white
+}
+
 @MainActor
 private final class StatisticsBackgroundView: NSView {
   override func draw(_ dirtyRect: NSRect) {
-    NSColor.underPageBackgroundColor.setFill()
+    statisticsCanvasColor.setFill()
     NSBezierPath(rect: dirtyRect).fill()
   }
 
   override func viewDidChangeEffectiveAppearance() {
     super.viewDidChangeEffectiveAppearance()
     needsDisplay = true
+  }
+}
+
+@MainActor
+private final class UsageLegendView: NSView {
+  var items: [UsageLegendItem] = [] { didSet { needsDisplay = true } }
+
+  override func draw(_ dirtyRect: NSRect) {
+    super.draw(dirtyRect)
+    guard !items.isEmpty else { return }
+    let slotWidth = bounds.width / 3
+    let nameAttributes: [NSAttributedString.Key: Any] = [
+      .font: NSFont.systemFont(ofSize: 10.5, weight: .medium),
+      .foregroundColor: NSColor.secondaryLabelColor,
+    ]
+    let durationAttributes: [NSAttributedString.Key: Any] = [
+      .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+      .foregroundColor: NSColor.labelColor,
+    ]
+    for (index, item) in items.prefix(3).enumerated() {
+      let x = CGFloat(index) * slotWidth
+      item.color.setFill()
+      NSBezierPath(roundedRect: NSRect(x: x, y: 26, width: 8, height: 8), xRadius: 2, yRadius: 2)
+        .fill()
+      NSAttributedString(string: item.name, attributes: nameAttributes).draw(
+        in: NSRect(x: x + 14, y: 21, width: slotWidth - 18, height: 17))
+      NSAttributedString(string: item.duration, attributes: durationAttributes).draw(
+        in: NSRect(x: x + 14, y: 3, width: slotWidth - 18, height: 17))
+    }
   }
 }
 
@@ -45,8 +92,8 @@ private final class UsageChartView: NSView {
       .font: NSFont.monospacedDigitSystemFont(ofSize: 9.5, weight: .regular),
       .foregroundColor: NSColor.tertiaryLabelColor,
     ]
-    for step in 0...2 {
-      let fraction = CGFloat(step) / 2
+    for step in 0...4 {
+      let fraction = CGFloat(step) / 4
       let y = plot.minY + plot.height * fraction
       let line = NSBezierPath()
       line.move(to: NSPoint(x: plot.minX, y: y))
@@ -54,12 +101,25 @@ private final class UsageChartView: NSView {
       line.lineWidth = 0.5
       gridColor.setStroke()
       line.stroke()
-      let value = maximum * Double(step) / 2
-      NSAttributedString(string: compactDuration(value), attributes: axisAttributes).draw(
-        at: NSPoint(x: plot.maxX + 6, y: y - 6))
+      if step.isMultiple(of: 2) {
+        let value = maximum * Double(step) / 4
+        NSAttributedString(string: compactDuration(value), attributes: axisAttributes).draw(
+          at: NSPoint(x: plot.maxX + 6, y: y - 6))
+      }
     }
     guard !bars.isEmpty else { return }
     let slot = plot.width / CGFloat(bars.count)
+    let verticalStep = bars.count > 12 ? 6 : 1
+    for index in Swift.stride(from: 0, through: bars.count, by: verticalStep) {
+      let x = plot.minX + slot * CGFloat(index)
+      let line = NSBezierPath()
+      line.move(to: NSPoint(x: x, y: plot.minY))
+      line.line(to: NSPoint(x: x, y: plot.maxY))
+      line.lineWidth = 0.5
+      line.setLineDash([2, 2], count: 2, phase: 0)
+      gridColor.setStroke()
+      line.stroke()
+    }
     let barWidth = min(bars.count > 12 ? 12 : 36, max(3, slot * 0.58))
     for (index, bar) in bars.enumerated() {
       let x = plot.minX + slot * CGFloat(index) + (slot - barWidth) / 2
@@ -72,7 +132,7 @@ private final class UsageChartView: NSView {
         let rect = NSRect(x: x, y: y, width: barWidth, height: min(height, plot.maxY - y))
         let segmentColor: NSColor =
           colorsOnlySelected && selectedIndex != index
-          ? .tertiaryLabelColor
+          ? NSColor.secondaryLabelColor.withAlphaComponent(0.48)
           : (colors.indices.contains(valueIndex) ? colors[valueIndex] : .systemBlue)
         segmentColor.setFill()
         if valueIndex == topIndex {
@@ -138,6 +198,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   private let nextButton = NSButton()
   private let weeklyChart = UsageChartView()
   private let hourlyChart = UsageChartView()
+  private let usageLegend = UsageLegendView()
   private let table = NSTableView()
   private let search = NSSearchField()
   private let palette: [NSColor] = [
@@ -150,12 +211,13 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     self.history = history
     self.faviconLoader = faviconLoader
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 860, height: 720),
+      contentRect: NSRect(x: 0, y: 0, width: 760, height: 720),
       styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
     window.title = "Web Time Statistics"
+    window.titleVisibility = .hidden
     window.titlebarAppearsTransparent = true
     window.isMovableByWindowBackground = true
-    window.backgroundColor = .underPageBackgroundColor
+    window.backgroundColor = statisticsCanvasColor
     let content = StatisticsBackgroundView(frame: window.contentView?.bounds ?? .zero)
     content.autoresizingMask = [.width, .height]
     window.contentView = content
@@ -183,48 +245,49 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     content.addSubview(title)
     content.addSubview(updatedLabel)
 
-    let usagePanel = panel(frame: NSRect(x: 24, y: 286, width: 812, height: 342))
+    let usagePanel = panel(frame: NSRect(x: 24, y: 286, width: 712, height: 342))
     let usageTitle = NSTextField(labelWithString: "Usage")
     usageTitle.frame = NSRect(x: 20, y: 297, width: 140, height: 24)
     usageTitle.font = .systemFont(ofSize: 15, weight: .semibold)
     totalLabel.frame = NSRect(x: 20, y: 250, width: 250, height: 48)
-    totalLabel.font = .monospacedDigitSystemFont(ofSize: 38, weight: .regular)
-    dateLabel.frame = NSRect(x: 392, y: 287, width: 180, height: 24)
+    totalLabel.font = .systemFont(ofSize: 38, weight: .regular)
+    dateLabel.frame = NSRect(x: 312, y: 287, width: 160, height: 24)
     dateLabel.font = .systemFont(ofSize: 14, weight: .medium)
     dateLabel.alignment = .right
 
     configureNavigationButton(
       previousButton, symbol: "chevron.left", action: #selector(previousDay))
-    previousButton.frame = NSRect(x: 586, y: 282, width: 38, height: 32)
+    previousButton.frame = NSRect(x: 500, y: 282, width: 38, height: 32)
     todayButton.target = self
     todayButton.action = #selector(goToToday)
     todayButton.bezelStyle = .rounded
-    todayButton.frame = NSRect(x: 630, y: 282, width: 94, height: 32)
+    todayButton.frame = NSRect(x: 544, y: 282, width: 94, height: 32)
     configureNavigationButton(nextButton, symbol: "chevron.right", action: #selector(nextDay))
-    nextButton.frame = NSRect(x: 730, y: 282, width: 38, height: 32)
+    nextButton.frame = NSRect(x: 644, y: 282, width: 38, height: 32)
 
-    weeklyChart.frame = NSRect(x: 20, y: 132, width: 772, height: 108)
+    weeklyChart.frame = NSRect(x: 20, y: 147, width: 672, height: 94)
     weeklyChart.sectionTitle = "WEEK"
     weeklyChart.colorsOnlySelected = true
-    hourlyChart.frame = NSRect(x: 20, y: 18, width: 772, height: 102)
+    hourlyChart.frame = NSRect(x: 20, y: 57, width: 672, height: 84)
     hourlyChart.sectionTitle = "DAY"
+    usageLegend.frame = NSRect(x: 20, y: 7, width: 672, height: 42)
     [
       usageTitle, totalLabel, dateLabel, previousButton, todayButton, nextButton, weeklyChart,
-      hourlyChart,
+      hourlyChart, usageLegend,
     ]
     .forEach(usagePanel.addSubview)
     content.addSubview(usagePanel)
 
-    let listPanel = panel(frame: NSRect(x: 24, y: 22, width: 812, height: 244))
+    let listPanel = panel(frame: NSRect(x: 24, y: 22, width: 712, height: 244))
     let websitesTitle = NSTextField(labelWithString: "Websites")
     websitesTitle.frame = NSRect(x: 20, y: 201, width: 180, height: 24)
     websitesTitle.font = .systemFont(ofSize: 15, weight: .semibold)
-    search.frame = NSRect(x: 562, y: 195, width: 230, height: 28)
+    search.frame = NSRect(x: 462, y: 195, width: 230, height: 28)
     search.placeholderString = "Search"
     search.delegate = self
 
     let columns = [
-      ("website", "Website", 420.0), ("time", "Time", 160.0), ("limit", "Daily Limit", 165.0),
+      ("website", "Website", 350.0), ("time", "Time", 145.0), ("limit", "Daily Limit", 155.0),
     ]
     for (identifier, title, width) in columns {
       let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
@@ -234,13 +297,13 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     }
     table.delegate = self
     table.dataSource = self
-    table.rowHeight = 38
-    table.frame = NSRect(x: 0, y: 0, width: 772, height: 168)
+    table.rowHeight = 34
+    table.frame = NSRect(x: 0, y: 0, width: 672, height: 168)
     table.headerView = NSTableHeaderView()
     table.usesAlternatingRowBackgroundColors = true
     table.allowsEmptySelection = true
     table.allowsMultipleSelection = false
-    let scroll = NSScrollView(frame: NSRect(x: 20, y: 16, width: 772, height: 168))
+    let scroll = NSScrollView(frame: NSRect(x: 20, y: 16, width: 672, height: 168))
     scroll.documentView = table
     scroll.hasVerticalScroller = true
     scroll.autohidesScrollers = true
@@ -255,10 +318,10 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   private func panel(frame: NSRect) -> NSBox {
     let box = NSBox(frame: frame)
     box.boxType = .custom
-    box.cornerRadius = 12
+    box.cornerRadius = 14
     box.borderWidth = 0.5
     box.borderColor = .separatorColor
-    box.fillColor = .controlBackgroundColor
+    box.fillColor = statisticsPanelColor
     return box
   }
 
@@ -315,8 +378,8 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   }
 
   private func websiteCell(name: String, site: SiteConfiguration?, emphasized: Bool) -> NSView {
-    let view = NSView(frame: NSRect(x: 0, y: 0, width: 410, height: 38))
-    let icon = FaviconTileView(frame: NSRect(x: 5, y: 4, width: 30, height: 30))
+    let view = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 34))
+    let icon = FaviconTileView(frame: NSRect(x: 5, y: 3, width: 28, height: 28))
     if let site {
       icon.image =
         faviconLoader.image(for: site) { [weak self] in self?.table.reloadData() }
@@ -327,7 +390,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
       icon.contentTintColor = .controlAccentColor
     }
     let label = NSTextField(labelWithString: name)
-    label.frame = NSRect(x: 45, y: 8, width: 350, height: 22)
+    label.frame = NSRect(x: 43, y: 6, width: 287, height: 22)
     label.font = .systemFont(ofSize: 13, weight: emphasized ? .semibold : .regular)
     view.addSubview(icon)
     view.addSubview(label)
@@ -335,9 +398,9 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   }
 
   private func textCell(_ value: String, emphasized: Bool) -> NSView {
-    let container = NSView(frame: NSRect(x: 0, y: 0, width: 150, height: 38))
+    let container = NSView(frame: NSRect(x: 0, y: 0, width: 150, height: 34))
     let field = NSTextField(labelWithString: value)
-    field.frame = NSRect(x: 0, y: 8, width: 148, height: 22)
+    field.frame = NSRect(x: 0, y: 6, width: 148, height: 22)
     field.font = .monospacedDigitSystemFont(ofSize: 13, weight: emphasized ? .semibold : .regular)
     field.lineBreakMode = .byTruncatingTail
     container.addSubview(field)
@@ -374,6 +437,15 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     weeklyChart.selectedIndex = weekDates.firstIndex {
       calendar.isDate($0, inSameDayAs: selectedDate)
     }
+    usageLegend.items = orderedSites.enumerated().filter {
+      totals[$0.element.id, default: 0] > 0
+    }.sorted {
+      totals[$0.element.id, default: 0] > totals[$1.element.id, default: 0]
+    }.map { index, site in
+      UsageLegendItem(
+        name: site.name, duration: duration(totals[site.id, default: 0]),
+        color: palette[index % palette.count])
+    }
 
     let hours = history.hourly[dayKey(selectedDate), default: [:]]
     hourlyChart.bars = (0..<24).map { hour in
@@ -407,6 +479,9 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
         || site.primaryDomain.localizedCaseInsensitiveContains(query)
     }.sorted { totals[$0.id, default: 0] > totals[$1.id, default: 0] }
     table.reloadData()
+    if table.selectedRow < 0 {
+      table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+    }
   }
 
   private func dayKey(_ date: Date) -> String { UsageLedger.dayKey(for: date) }
