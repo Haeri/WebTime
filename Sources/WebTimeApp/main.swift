@@ -35,6 +35,46 @@ private final class SingleInstanceLock {
 }
 
 @MainActor
+private final class ControlsStatusMenuView: NSView {
+  private let iconView = NSImageView()
+  private let titleLabel = NSTextField(labelWithString: "")
+
+  init() {
+    super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+
+    iconView.imageScaling = .scaleProportionallyUpOrDown
+    iconView.contentTintColor = .tertiaryLabelColor
+    iconView.setContentHuggingPriority(.required, for: .horizontal)
+    titleLabel.font = .systemFont(ofSize: 11, weight: .regular)
+    titleLabel.textColor = .secondaryLabelColor
+    titleLabel.lineBreakMode = .byTruncatingTail
+
+    let row = NSStackView(views: [iconView, titleLabel])
+    row.orientation = .horizontal
+    row.alignment = .centerY
+    row.spacing = 6
+    row.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(row)
+    NSLayoutConstraint.activate([
+      row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+      row.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -14),
+      row.centerYAnchor.constraint(equalTo: centerYAnchor),
+      iconView.widthAnchor.constraint(equalToConstant: 9),
+      iconView.heightAnchor.constraint(equalToConstant: 9),
+    ])
+  }
+
+  required init?(coder: NSCoder) { nil }
+
+  func update(title: String, symbol: String) {
+    titleLabel.stringValue = title
+    let configuration = NSImage.SymbolConfiguration(pointSize: 8, weight: .medium)
+    iconView.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)?
+      .withSymbolConfiguration(configuration)
+  }
+}
+
+@MainActor
 private final class ManualEntryTextField: NSTextField {
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
     if event.modifierFlags.contains(.command),
@@ -80,6 +120,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
   private var siteViews: [String: SiteProgressMenuView] = [:]
   private let controlsItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+  private let controlsStatusView = ControlsStatusMenuView()
   private let lockActionItem = NSMenuItem(
     title: "Unlock controls…", action: #selector(toggleControlsLock), keyEquivalent: "")
   private let manageItem = NSMenuItem(
@@ -164,6 +205,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     statisticsItem.target = self
     menu.addItem(statisticsItem)
     menu.addItem(.separator())
+    controlsItem.view = controlsStatusView
     controlsItem.isEnabled = false
     menu.addItem(controlsItem)
     lockActionItem.target = self
@@ -290,12 +332,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
       let minutes = max(1, Int(ceil(until.timeIntervalSince(now) / 60)))
       updateControlsStatus("Controls unlocked, relocks in \(minutes)m", symbol: "lock.open.fill")
       lockActionItem.title = "Lock controls now"
-      lockActionItem.image = menuSymbol("lock.fill", description: "Lock controls")
     } else {
       updateControlsStatus("Controls locked", symbol: "lock.fill")
       lockActionItem.title = "Unlock controls…"
-      lockActionItem.image = menuSymbol("lock.open.fill", description: "Unlock controls")
     }
+    lockActionItem.image = nil
     manageItem.isEnabled = unlocked
     quitItem.isEnabled = unlocked
   }
@@ -305,19 +346,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 
   private func updateControlsStatus(_ title: String, symbol: String) {
-    controlsItem.attributedTitle = NSAttributedString(
-      string: title,
-      attributes: [
-        .font: NSFont.systemFont(ofSize: 11, weight: .regular),
-        .foregroundColor: NSColor.secondaryLabelColor,
-      ])
-    controlsItem.image = menuSymbol(symbol, description: title)
-  }
-
-  private func menuSymbol(_ name: String, description: String) -> NSImage? {
-    let configuration = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
-    return NSImage(systemSymbolName: name, accessibilityDescription: description)?
-      .withSymbolConfiguration(configuration)
+    controlsStatusView.update(title: title, symbol: symbol)
   }
 
   private func touchControls() {
