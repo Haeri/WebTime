@@ -31,16 +31,13 @@ final class FaviconTileView: NSView {
   override func draw(_ dirtyRect: NSRect) {
     super.draw(dirtyRect)
     let tile = bounds.insetBy(dx: 0.5, dy: 0.5)
-    NSColor.white.withAlphaComponent(0.96).setFill()
-    NSBezierPath(
-      roundedRect: tile, xRadius: min(7, tile.width * 0.24),
-      yRadius: min(7, tile.height * 0.24)
-    ).fill()
-    NSColor.black.withAlphaComponent(0.08).setStroke()
-    let outline = NSBezierPath(
+    let background = NSBezierPath(
       roundedRect: tile, xRadius: min(7, tile.width * 0.24),
       yRadius: min(7, tile.height * 0.24))
-    outline.lineWidth = 0.5
-    outline.stroke()
+    NSColor.white.withAlphaComponent(0.96).setFill()
+    background.fill()
+    NSColor.black.withAlphaComponent(0.08).setStroke()
+    background.lineWidth = 0.5
+    background.stroke()
   }
 }

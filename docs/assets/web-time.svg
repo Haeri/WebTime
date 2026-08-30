@@ -17,7 +17,8 @@
   <rect x="55" y="55" width="914" height="914" rx="203" fill="none" stroke="url(#shine)" stroke-width="30"/>
   <g transform="translate(512 512) scale(0.82) translate(-512 -523.5)" fill="none" stroke="#FFFFFF" stroke-width="78" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)">
     <circle cx="512" cy="566" r="255"/>
-    <path d="M446 226h132M512 226v84M700 362l76-76"/>
-    <path d="M512 566L590 445"/>
+    <path d="M512 311v-92M697 381l72-72"/>
+    <path d="M512 566V407"/>
   </g>
+  <circle cx="512" cy="547" r="38" fill="#FFFFFF"/>
 </svg>

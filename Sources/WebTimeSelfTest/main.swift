@@ -52,24 +52,23 @@ expect(!controls.isUnlocked(at: start), "manual lock immediately closes controls
 var ledger = UsageLedger(now: start)
 let limits: [String: TimeInterval] = ["site-a": 100, "site-b": 50]
 expect(
-  ledger.tick(at: start, activeSiteIDs: ["site-a"], limits: limits).isEmpty,
+  ledger.tick(at: start, activeSiteID: "site-a", limits: limits) == nil,
   "first timer sample establishes a baseline"
 )
 expect(
-  ledger.tick(at: start.addingTimeInterval(5), activeSiteIDs: [], limits: limits).isEmpty,
+  ledger.tick(at: start.addingTimeInterval(5), activeSiteID: nil, limits: limits) == nil,
   "idle time is not counted")
 expect(
-  ledger.tick(at: start.addingTimeInterval(15), activeSiteIDs: ["site-a"], limits: limits)[
-    "site-a"] == 10,
+  ledger.tick(at: start.addingTimeInterval(15), activeSiteID: "site-a", limits: limits)?.seconds
+    == 10,
   "active elapsed time is counted")
 expect(
   ledger.tick(
-    at: start.addingTimeInterval(100), activeSiteIDs: ["site-a", "site-b"], limits: limits)[
-      "site-b"] == 30,
+    at: start.addingTimeInterval(100), activeSiteID: "site-b", limits: limits)?.seconds == 30,
   "sleep or stalled samples are capped at 30 seconds")
 expect(
-  ledger.consumed(siteID: "site-a") == 40 && ledger.consumed(siteID: "site-b") == 30,
-  "simultaneously active websites have independent counters")
+  ledger.consumed(siteID: "site-a") == 10 && ledger.consumed(siteID: "site-b") == 30,
+  "switching websites only advances the selected counter")
 
 var capped = UsageLedger(
   usage: DailyUsage(
@@ -109,8 +108,8 @@ var snoozedLedger = UsageLedger(
     day: UsageLedger.dayKey(for: start), consumedBySite: ["site-a": 60], lastSampleAt: start),
   now: start)
 _ = snoozedLedger.tick(
-  at: start.addingTimeInterval(5), activeSiteIDs: ["site-a"], limits: ["site-a": 60],
-  allowOverLimitSiteIDs: ["site-a"])
+  at: start.addingTimeInterval(5), activeSiteID: "site-a", limits: ["site-a": 60],
+  allowOverLimit: true)
 expect(
   snoozedLedger.consumed(siteID: "site-a") == 65,
   "foreground usage during a snooze remains visible in statistics")
@@ -149,6 +148,9 @@ let usage = DailyUsage(
 let roundTrippedUsage = try! JSONDecoder().decode(
   DailyUsage.self, from: JSONEncoder().encode(usage))
 expect(roundTrippedUsage == usage, "per-site usage survives persistence round-trip")
+expect(
+  DurationText.compact(3_660) == "1h 1m" && DurationText.compact(7_200) == "2h",
+  "durations use one shared compact format")
 
 let rankingSites = (1...7).map {
   SiteConfiguration(
@@ -174,7 +176,7 @@ expect(
 var usageHistory = UsageHistory(days: ["2026-08-30": ["site-a": 120]])
 let historySample = ISO8601DateFormatter().date(from: "2026-08-30T12:15:00Z")!
 usageHistory.record(
-  totals: ["site-a": 125], increments: ["site-a": 5], at: historySample,
+  totals: ["site-a": 125], increment: ("site-a", 5), at: historySample,
   limits: ["site-a": 125], calendar: utc)
 expect(
   usageHistory.hourly["2026-08-30"]?["12"]?["site-a"] == 5,
@@ -256,16 +258,6 @@ expect(
   !UnlockChallenge.matches(typed: challenge + " extra", challenge: challenge),
   "different unlock challenge is rejected")
 
-let nettop = "tcp4 192.168.1.2:50123<->93.184.216.34:443,en0,Established,1500,230\n"
-expect(
-  NetworkActivityDetector.parseNettop(nettop, matching: ["93.184.216.34"])["93.184.216.34"] == 1730,
-  "nettop byte counters parse")
-expect(
-  NetworkActivityDetector.parseNettop(
-    nettop, matchingBySite: ["site-a": ["93.184.216.34"], "site-b": ["104.16.0.1"]])[
-      "site-a"] == 1730,
-  "network byte counters are attributed per website")
-
 let processNettop = """
   Browser One.998,,
   tcp4 192.168.1.2:50123<->93.184.216.34:443,en0,Established,1500,230
@@ -276,8 +268,9 @@ let processSnapshot = NetworkActivityDetector.parseNettopSnapshot(
   processNettop,
   matchingBySite: ["site-a": ["93.184.216.34"], "site-b": ["104.16.0.1"]])
 expect(
-  processSnapshot.processNamesBySite["site-a"] == ["Browser One"],
-  "nettop ownership is attributed to the browser process")
+  processSnapshot.totalsBySite["site-a"] == 1730
+    && processSnapshot.processNamesBySite["site-a"] == ["Browser One"],
+  "nettop traffic and ownership are attributed per website")
 expect(
   NetworkActivityDetector.matchesForeground(
     processSnapshot.processNamesBySite["site-a"], hints: ["browser one"]),

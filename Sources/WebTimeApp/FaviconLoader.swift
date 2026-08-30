@@ -40,14 +40,7 @@ final class FaviconLoader {
   }
 
   func prefetch(for site: SiteConfiguration, onUpdate: @escaping @MainActor () -> Void) {
-    let key = cacheKey(for: site)
-    if images[key] != nil { return }
-    let file = cacheFile(for: key)
-    if let file, let image = NSImage(contentsOf: file) {
-      images[key] = image
-      return
-    }
-    requestImage(for: site, key: key, file: file, onUpdate: onUpdate)
+    _ = image(for: site, onUpdate: onUpdate)
   }
 
   private func requestImage(
@@ -59,6 +52,7 @@ final class FaviconLoader {
     requestsInFlight.insert(key)
     Task { @MainActor [weak self] in
       guard let self else { return }
+      defer { requestsInFlight.remove(key) }
       for url in await faviconCandidates(for: site.primaryDomain) {
         do {
           let (data, response) = try await session.data(from: url)
@@ -67,7 +61,6 @@ final class FaviconLoader {
             data.count <= 1_000_000, let image = NSImage(data: data)
           else { continue }
           images[key] = image
-          requestsInFlight.remove(key)
           retryAfter.removeValue(forKey: key)
           if let file {
             try? data.write(to: file, options: .atomic)
@@ -78,7 +71,6 @@ final class FaviconLoader {
           return
         } catch { continue }
       }
-      requestsInFlight.remove(key)
       retryAfter[key] = Date().addingTimeInterval(Self.retryDelay)
     }
   }

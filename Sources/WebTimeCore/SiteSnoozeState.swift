@@ -1,7 +1,7 @@
 import Foundation
 
 public struct SiteSnoozeState: Sendable {
-  public private(set) var endsBySite: [String: Date] = [:]
+  private var endsBySite: [String: Date] = [:]
 
   public init() {}
 

@@ -325,15 +325,13 @@ guard geteuid() == 0 else {
   exit(77)
 }
 private let arguments = CommandLine.arguments
-private let configuredUpstream = arguments.first(where: { $0.hasPrefix("--upstream=") })?
-  .split(separator: "=", maxSplits: 1).last.map(String.init)
 private let upstreamFile = arguments.first(where: { $0.hasPrefix("--upstream-file=") })?
   .split(separator: "=", maxSplits: 1).last.map(String.init)
 private let upstreamFromFile = upstreamFile.flatMap { path in
   (try? String(contentsOfFile: path, encoding: .utf8))?
     .split(whereSeparator: \.isWhitespace).first.map(String.init)
 }
-private let upstream = upstreamFromFile ?? configuredUpstream ?? "1.1.1.1"
+private let upstream = upstreamFromFile ?? "1.1.1.1"
 private let state = DaemonState()
 ControlServer(state: state).start()
 do { try DNSProxy(state: state, upstream: upstream).run() } catch {

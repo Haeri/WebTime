@@ -5,7 +5,6 @@ import WebTimeCore
 
 private enum SingleInstanceLockError: Error {
   case alreadyRunning
-  case unavailable(Int32)
 }
 
 private final class SingleInstanceLock {
@@ -16,13 +15,15 @@ private final class SingleInstanceLock {
       "local.web-time.app-\(getuid()).lock")
     let descriptor = Darwin.open(
       lockURL.path, O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, S_IRUSR | S_IWUSR)
-    guard descriptor >= 0 else { throw SingleInstanceLockError.unavailable(errno) }
+    guard descriptor >= 0 else {
+      throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
 
     guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
       let lockError = errno
       Darwin.close(descriptor)
       if lockError == EWOULDBLOCK { throw SingleInstanceLockError.alreadyRunning }
-      throw SingleInstanceLockError.unavailable(lockError)
+      throw POSIXError(POSIXErrorCode(rawValue: lockError) ?? .EIO)
     }
 
     fileDescriptor = descriptor
@@ -107,7 +108,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var interactionMonitor: Any?
   private var sampleInFlight = false
   private var policySyncInFlight = false
-  private var activeSiteIDs = Set<String>()
+  private var activeSiteID: String?
   private var daemonOnline = false
   private var lastPolicies: [DaemonSitePolicy]?
   private var controlsSession = ControlsSession()
@@ -118,7 +119,13 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var menuIsOpen = false
   private var menuRankingChangedWhileOpen = false
   private var displayedMenuSiteIDs: [String] = []
-  private lazy var idleStatusImage = webTimeImage()
+  private let idleStatusImage: NSImage = {
+    let image =
+      NSImage(systemSymbolName: "stopwatch", accessibilityDescription: "Web Time")
+      ?? NSImage()
+    image.isTemplate = true
+    return image
+  }()
 
   private var siteViews: [String: SiteProgressMenuView] = [:]
   private let controlsItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -222,13 +229,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private func update(now: Date) {
     archiveAndResetIfNeeded(at: now)
     if snoozes.removeExpired(at: now) { lastPolicies = nil }
-    let snoozedSiteIDs = Set(
-      configuration.sites.lazy.filter { self.snoozes.isActive(siteID: $0.id, at: now) }.map(\.id))
-    let increments = ledger.tick(
-      at: now, activeSiteIDs: activeSiteIDs, limits: limitsBySite,
-      allowOverLimitSiteIDs: snoozedSiteIDs)
+    let increment = ledger.tick(
+      at: now, activeSiteID: activeSiteID, limits: limitsBySite,
+      allowOverLimit: activeSiteID.map { snoozes.isActive(siteID: $0, at: now) } ?? false)
     history.record(
-      totals: ledger.usage.consumedBySite, increments: increments, at: now,
+      totals: ledger.usage.consumedBySite, increment: increment, at: now,
       limits: limitsBySite)
     history.trim(keepingRecentDays: 400)
     if controlsSession.unlockedUntil != nil && !controlsAreUnlocked(at: now) { lockControls() }
@@ -244,16 +249,15 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     let foregroundHints = foregroundProcessHints()
     DispatchQueue.global(qos: .utility).async { [weak self] in
       let status = try? daemon.send(.status)
-      let active =
-        status.map {
-          detector.sample(
-            addressesBySite: $0.learnedAddressesBySite, idleGrace: grace,
-            foregroundProcessHints: foregroundHints, now: now)
-        } ?? []
+      let active = status.flatMap {
+        detector.sample(
+          addressesBySite: $0.learnedAddressesBySite, idleGrace: grace,
+          foregroundProcessHints: foregroundHints, now: now)
+      }
       DispatchQueue.main.async {
         guard let self else { return }
         self.sampleInFlight = false
-        self.activeSiteIDs = active
+        self.activeSiteID = active
         self.daemonOnline = status?.ok == true
         self.syncPoliciesIfNeeded()
         self.refreshDisplay(now: Date())
@@ -313,7 +317,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
   private func refreshDisplay(now: Date) {
     let unlocked = controlsAreUnlocked(at: now)
-    let displayedSite = configuration.sites.first(where: { activeSiteIDs.contains($0.id) })
+    let displayedSite = configuration.sites.first(where: { $0.id == activeSiteID })
     if let site = displayedSite {
       let used = ledger.consumed(siteID: site.id)
       let usedFraction = site.dailyLimitSeconds > 0 ? min(1, used / site.dailyLimitSeconds) : 1
@@ -328,8 +332,8 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         remainingFraction: 1 - usedFraction, blocked: blocked)
       statusItem.button?.toolTip =
         snoozeRemaining > 0
-        ? "\(site.name): snoozed for \(format(remaining))"
-        : "\(site.name): \(format(remaining)) remaining of \(format(site.dailyLimitSeconds)) · \(Int(usedFraction * 100))% used"
+        ? "\(site.name): snoozed for \(DurationText.compact(remaining))"
+        : "\(site.name): \(DurationText.compact(remaining)) remaining of \(DurationText.compact(site.dailyLimitSeconds)) · \(Int(usedFraction * 100))% used"
     } else {
       statusItem.button?.image = idleStatusImage
       statusItem.button?.toolTip =
@@ -349,16 +353,17 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
       }
       siteViews[site.id]?.update(
         name: site.name, favicon: favicon, used: used, limit: site.dailyLimitSeconds,
-        active: activeSiteIDs.contains(site.id), blocked: blocked,
+        active: activeSiteID == site.id, blocked: blocked,
         canSnooze: unlocked && blocked, snoozeRemaining: snoozeRemaining)
     }
 
     if unlocked, let until = controlsSession.unlockedUntil {
       let minutes = max(1, Int(ceil(until.timeIntervalSince(now) / 60)))
-      updateControlsStatus("Controls unlocked, relocks in \(minutes)m", symbol: "lock.open.fill")
+      controlsStatusView.update(
+        title: "Controls unlocked, relocks in \(minutes)m", symbol: "lock.open.fill")
       lockActionItem.title = "Lock controls now"
     } else {
-      updateControlsStatus("Controls locked", symbol: "lock.fill")
+      controlsStatusView.update(title: "Controls locked", symbol: "lock.fill")
       lockActionItem.title = "Unlock controls…"
     }
     lockActionItem.image = nil
@@ -381,10 +386,6 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
   private func controlsAreUnlocked(at date: Date) -> Bool {
     controlsSession.isUnlocked(at: date)
-  }
-
-  private func updateControlsStatus(_ title: String, symbol: String) {
-    controlsStatusView.update(title: title, symbol: symbol)
   }
 
   private func touchControls() {
@@ -500,17 +501,13 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 
   @objc private func showStatistics() {
-    if let statisticsController {
-      refreshStatistics()
-      statisticsController.showWindow(nil)
-      statisticsController.window?.makeKeyAndOrderFront(nil)
-    } else {
-      let controller = StatisticsWindowController(
+    if statisticsController == nil {
+      statisticsController = StatisticsWindowController(
         sites: configuration.sites, history: history, faviconLoader: faviconLoader)
-      statisticsController = controller
-      controller.showWindow(nil)
-      controller.window?.makeKeyAndOrderFront(nil)
     }
+    refreshStatistics()
+    statisticsController?.showWindow(nil)
+    statisticsController?.window?.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
   }
 
@@ -562,13 +559,6 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     try? store.save(history, to: "history.json")
   }
 
-  private func format(_ seconds: TimeInterval) -> String {
-    let total = max(0, Int(seconds.rounded()))
-    let hours = total / 3600
-    let minutes = (total % 3600) / 60
-    return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
-  }
-
   private func foregroundProcessHints() -> [String] {
     guard let application = NSWorkspace.shared.frontmostApplication else { return [] }
     let candidates = [
@@ -582,37 +572,6 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
       else { return nil }
       return hint
     }
-  }
-
-  private func webTimeImage() -> NSImage {
-    let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
-      NSColor.black.setStroke()
-      let face = NSBezierPath(ovalIn: NSRect(x: 3, y: 2.5, width: 12, height: 12))
-      face.lineWidth = 1.8
-      face.stroke()
-
-      let crown = NSBezierPath()
-      crown.move(to: NSPoint(x: 7.2, y: 16))
-      crown.line(to: NSPoint(x: 10.8, y: 16))
-      crown.move(to: NSPoint(x: 9, y: 14.5))
-      crown.line(to: NSPoint(x: 9, y: 16))
-      crown.move(to: NSPoint(x: 13.2, y: 13.2))
-      crown.line(to: NSPoint(x: 14.5, y: 14.5))
-      crown.lineWidth = 1.8
-      crown.lineCapStyle = .round
-      crown.stroke()
-
-      let hand = NSBezierPath()
-      hand.move(to: NSPoint(x: 9, y: 8.5))
-      hand.line(to: NSPoint(x: 11.5, y: 11.7))
-      hand.lineWidth = 1.65
-      hand.lineCapStyle = .round
-      hand.stroke()
-      return true
-    }
-    image.isTemplate = true
-    image.accessibilityDescription = "Web Time"
-    return image
   }
 
   private func activeSiteImage(

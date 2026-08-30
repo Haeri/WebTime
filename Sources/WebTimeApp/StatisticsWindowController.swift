@@ -1,5 +1,4 @@
 import AppKit
-import QuartzCore
 import WebTimeCore
 
 private struct UsageChartBar {
@@ -13,31 +12,6 @@ private struct UsageLegendItem {
   var duration: String
   var color: NSColor
   var limitReached: Bool
-}
-
-private let statisticsCanvasColor = NSColor(name: nil) { appearance in
-  appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-    ? NSColor(srgbRed: 0.125, green: 0.129, blue: 0.141, alpha: 1)
-    : NSColor(srgbRed: 0.965, green: 0.965, blue: 0.97, alpha: 1)
-}
-
-private let statisticsPanelColor = NSColor(name: nil) { appearance in
-  appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-    ? NSColor(srgbRed: 0.158, green: 0.162, blue: 0.174, alpha: 1)
-    : NSColor.white
-}
-
-@MainActor
-private final class StatisticsBackgroundView: NSView {
-  override func draw(_ dirtyRect: NSRect) {
-    statisticsCanvasColor.setFill()
-    NSBezierPath(rect: dirtyRect).fill()
-  }
-
-  override func viewDidChangeEffectiveAppearance() {
-    super.viewDidChangeEffectiveAppearance()
-    needsDisplay = true
-  }
 }
 
 @MainActor
@@ -225,25 +199,12 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     self.faviconLoader = faviconLoader
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 700, height: 760),
-      styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView], backing: .buffered,
-      defer: false)
+      styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
     window.title = "Web Time Statistics"
-    window.titleVisibility = .hidden
-    window.titlebarAppearsTransparent = true
-    window.isMovableByWindowBackground = true
-    window.isOpaque = false
-    window.backgroundColor = .clear
-    let content = StatisticsBackgroundView(frame: window.contentView?.bounds ?? .zero)
-    content.autoresizingMask = [.width, .height]
-    content.wantsLayer = true
-    content.layer?.cornerRadius = 20
-    content.layer?.cornerCurve = .continuous
-    content.layer?.masksToBounds = true
-    window.contentView = content
     window.center()
     super.init(window: window)
-    buildUI(in: content)
-    refresh(animated: false)
+    buildUI(in: window.contentView!)
+    refresh()
   }
 
   required init?(coder: NSCoder) { nil }
@@ -251,7 +212,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   func update(sites: [SiteConfiguration], history: UsageHistory) {
     self.sites = sites
     self.history = history
-    refresh(animated: false)
+    refresh()
   }
 
   private func buildUI(in content: NSView) {
@@ -346,7 +307,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     box.cornerRadius = 18
     box.borderWidth = 0.5
     box.borderColor = .separatorColor
-    box.fillColor = statisticsPanelColor
+    box.fillColor = .controlBackgroundColor
     return box
   }
 
@@ -361,19 +322,19 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   @objc private func previousDay() {
     selectedDate =
       Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-    refresh(animated: true)
+    refresh()
   }
 
   @objc private func nextDay() {
     let candidate =
       Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
     selectedDate = min(Calendar.current.startOfDay(for: Date()), candidate)
-    refresh(animated: true)
+    refresh()
   }
 
   @objc private func goToToday() {
     selectedDate = Calendar.current.startOfDay(for: Date())
-    refresh(animated: true)
+    refresh()
   }
 
   func controlTextDidChange(_ obj: Notification) { refreshTable() }
@@ -387,7 +348,8 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     if row == 0 {
       switch column.identifier.rawValue {
       case "website": return websiteCell(name: "All Websites", site: nil, emphasized: true)
-      case "time": return textCell(duration(totals.values.reduce(0, +)), emphasized: true)
+      case "time":
+        return textCell(DurationText.compact(totals.values.reduce(0, +)), emphasized: true)
       case "limit": return textCell("No limit", emphasized: true)
       default: return nil
       }
@@ -396,12 +358,14 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     let site = filteredSites[row - 1]
     switch column.identifier.rawValue {
     case "website": return websiteCell(name: site.name, site: site, emphasized: false)
-    case "time": return textCell(duration(totals[site.id, default: 0]), emphasized: false)
+    case "time":
+      return textCell(DurationText.compact(totals[site.id, default: 0]), emphasized: false)
     case "limit":
       let reached = history.limitHitHourBySite[dayKey(selectedDate)]?[site.id] != nil
       return textCell(
         reached
-          ? "\(duration(site.dailyLimitSeconds)) · Reached" : duration(site.dailyLimitSeconds),
+          ? "\(DurationText.compact(site.dailyLimitSeconds)) · Reached"
+          : DurationText.compact(site.dailyLimitSeconds),
         emphasized: false, color: reached ? .systemRed : nil)
     default: return nil
     }
@@ -438,7 +402,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     return container
   }
 
-  private func refresh(animated: Bool) {
+  private func refresh() {
     let now = Date()
     let formatter = DateFormatter()
     formatter.timeStyle = .short
@@ -449,7 +413,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     todayButton.isEnabled = selectedDate != today
 
     let totals = history.days[dayKey(selectedDate), default: [:]]
-    totalLabel.stringValue = duration(totals.values.reduce(0, +))
+    totalLabel.stringValue = DurationText.compact(totals.values.reduce(0, +))
     let orderedSites = sites
     let colors = orderedSites.indices.map { palette[$0 % palette.count] }
     weeklyChart.colors = colors
@@ -477,7 +441,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
       totals[$0.element.id, default: 0] > totals[$1.element.id, default: 0]
     }.map { index, site in
       UsageLegendItem(
-        name: site.name, duration: duration(totals[site.id, default: 0]),
+        name: site.name, duration: DurationText.compact(totals[site.id, default: 0]),
         color: palette[index % palette.count],
         limitReached: history.limitHitHourBySite[dayKey(selectedDate)]?[site.id] != nil)
     }
@@ -493,19 +457,6 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     }
     hourlyChart.selectedIndex = nil
     refreshTable()
-
-    if animated {
-      weeklyChart.alphaValue = 0.35
-      hourlyChart.alphaValue = 0.35
-      table.alphaValue = 0.55
-      NSAnimationContext.runAnimationGroup { context in
-        context.duration = 0.18
-        context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        weeklyChart.animator().alphaValue = 1
-        hourlyChart.animator().alphaValue = 1
-        table.animator().alphaValue = 1
-      }
-    }
   }
 
   private func refreshTable() {
@@ -530,15 +481,6 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     let formatter = DateFormatter()
     formatter.dateFormat = "EEEE, d MMMM"
     return formatter.string(from: date)
-  }
-
-  private func duration(_ seconds: TimeInterval) -> String {
-    let minutes = max(0, Int(seconds.rounded()) / 60)
-    if minutes >= 60 {
-      let remainder = minutes % 60
-      return remainder == 0 ? "\(minutes / 60)h" : "\(minutes / 60)h \(remainder)m"
-    }
-    return "\(minutes)m"
   }
 
   private var appVersionDescription: String {

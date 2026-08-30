@@ -21,26 +21,19 @@ public struct UsageLedger: Sendable {
   }
 
   /// Records at most 30 seconds per tick so sleep/wake or a stalled app never consumes hours at once.
-  @discardableResult
   public mutating func tick(
-    at date: Date, activeSiteIDs: Set<String>, limits: [String: TimeInterval],
-    allowOverLimitSiteIDs: Set<String> = []
-  ) -> [String: TimeInterval] {
+    at date: Date, activeSiteID: String?, limits: [String: TimeInterval],
+    allowOverLimit: Bool = false
+  ) -> (siteID: String, seconds: TimeInterval)? {
     resetIfNeeded(at: date)
     defer { usage.lastSampleAt = date }
-    guard !activeSiteIDs.isEmpty, let previous = usage.lastSampleAt else { return [:] }
+    guard let activeSiteID, let limit = limits[activeSiteID], let previous = usage.lastSampleAt
+    else { return nil }
     let delta = max(0, min(30, date.timeIntervalSince(previous)))
-    var appliedBySite: [String: TimeInterval] = [:]
-    for siteID in activeSiteIDs {
-      guard let limit = limits[siteID] else { continue }
-      let consumed = usage.consumedBySite[siteID, default: 0]
-      let applied =
-        allowOverLimitSiteIDs.contains(siteID)
-        ? delta : min(delta, max(0, limit - consumed))
-      usage.consumedBySite[siteID] = consumed + applied
-      appliedBySite[siteID] = applied
-    }
-    return appliedBySite
+    let consumed = usage.consumedBySite[activeSiteID, default: 0]
+    let applied = allowOverLimit ? delta : min(delta, max(0, limit - consumed))
+    usage.consumedBySite[activeSiteID] = consumed + applied
+    return (activeSiteID, applied)
   }
 
   public func consumed(siteID: String) -> TimeInterval {

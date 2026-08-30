@@ -90,8 +90,8 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
     let value: String
     switch column.identifier.rawValue {
     case "domains": value = site.primaryDomain
-    case "limit": value = duration(site.dailyLimitSeconds)
-    case "used": value = duration(consumedBySite[site.id, default: 0])
+    case "limit": value = DurationText.compact(site.dailyLimitSeconds)
+    case "used": value = DurationText.compact(consumedBySite[site.id, default: 0])
     default: value = ""
     }
     let field = NSTextField(labelWithString: value)
@@ -228,8 +228,4 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
     return response
   }
 
-  private func duration(_ seconds: TimeInterval) -> String {
-    let totalMinutes = Int(seconds) / 60
-    return totalMinutes >= 60 ? "\(totalMinutes / 60)h \(totalMinutes % 60)m" : "\(totalMinutes)m"
-  }
 }

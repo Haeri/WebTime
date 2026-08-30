@@ -64,15 +64,17 @@ public struct UsageHistory: Codable, Equatable, Sendable {
   }
 
   public mutating func record(
-    totals: [String: TimeInterval], increments: [String: TimeInterval], at date: Date,
+    totals: [String: TimeInterval], increment: (siteID: String, seconds: TimeInterval)?,
+    at date: Date,
     limits: [String: TimeInterval], calendar: Calendar = .current
   ) {
     let day = UsageLedger.dayKey(for: date, calendar: calendar)
     days[day] = totals
     let hourValue = calendar.component(.hour, from: date)
     let hour = String(format: "%02d", hourValue)
-    for (siteID, seconds) in increments where seconds > 0 {
-      hourly[day, default: [:]][hour, default: [:]][siteID, default: 0] += seconds
+    if let increment, increment.seconds > 0 {
+      hourly[day, default: [:]][hour, default: [:]][increment.siteID, default: 0] +=
+        increment.seconds
     }
     for (siteID, limit) in limits where limit > 0 && totals[siteID, default: 0] >= limit {
       if limitHitHourBySite[day, default: [:]][siteID] == nil {

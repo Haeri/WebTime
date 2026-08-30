@@ -1,20 +1,15 @@
 import AppKit
+import WebTimeCore
 
 @MainActor
 private final class AllowanceProgressView: NSView {
   var fraction = 0.0 { didSet { needsDisplay = true } }
   var color = NSColor.systemBlue { didSet { needsDisplay = true } }
 
-  private let trackColor = NSColor(name: nil) { appearance in
-    appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-      ? NSColor.white.withAlphaComponent(0.2)
-      : NSColor.black.withAlphaComponent(0.11)
-  }
-
   override func draw(_ dirtyRect: NSRect) {
     super.draw(dirtyRect)
     let trackRect = bounds.insetBy(dx: 0, dy: 1)
-    trackColor.setFill()
+    NSColor.quaternaryLabelColor.setFill()
     NSBezierPath(roundedRect: trackRect, xRadius: 2, yRadius: 2).fill()
     guard fraction > 0 else { return }
     let fillRect = NSRect(
@@ -81,8 +76,8 @@ final class SiteProgressMenuView: NSView {
       ? .systemRed : (remainingFraction <= 0.25 ? .systemOrange : .systemBlue)
     detailLabel.stringValue =
       snoozeRemaining > 0
-      ? "Snoozed \(duration(snoozeRemaining)) · \(Int(usedFraction * 100))% used · \(duration(limit)) set"
-      : "\(duration(remaining)) left · \(Int(usedFraction * 100))% used · \(duration(limit)) set"
+      ? "Snoozed \(DurationText.compact(snoozeRemaining)) · \(Int(usedFraction * 100))% used · \(DurationText.compact(limit)) set"
+      : "\(DurationText.compact(remaining)) left · \(Int(usedFraction * 100))% used · \(DurationText.compact(limit)) set"
     snoozeButton.isHidden = !canSnooze
     if active && !blocked {
       stateView.image = NSImage(
@@ -97,14 +92,5 @@ final class SiteProgressMenuView: NSView {
 
   @objc private func requestSnooze() {
     onSnooze()
-  }
-
-  private func duration(_ seconds: TimeInterval) -> String {
-    let totalMinutes = max(0, Int(seconds.rounded()) / 60)
-    if totalMinutes >= 60 {
-      let minutes = totalMinutes % 60
-      return minutes == 0 ? "\(totalMinutes / 60)h" : "\(totalMinutes / 60)h \(minutes)m"
-    }
-    return "\(totalMinutes)m"
   }
 }
