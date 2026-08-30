@@ -515,19 +515,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
       NSGraphicsContext.restoreGraphicsState()
 
       let ringRect = NSRect(x: 1.25, y: 1.25, width: 15.5, height: 15.5)
-      let track = NSBezierPath(ovalIn: ringRect)
-      NSColor.black.withAlphaComponent(0.26).setStroke()
-      track.lineWidth = 3
-      track.stroke()
-      NSColor.white.withAlphaComponent(0.28).setStroke()
-      track.lineWidth = 1.6
-      track.stroke()
-
       guard visibleFraction > 0 else { return true }
       let progress = NSBezierPath()
       progress.appendArc(
         withCenter: NSPoint(x: ringRect.midX, y: ringRect.midY), radius: ringRect.width / 2,
-        startAngle: 90, endAngle: 90 - 360 * CGFloat(visibleFraction), clockwise: true)
+        startAngle: 90, endAngle: 90 + 360 * CGFloat(visibleFraction), clockwise: false)
       ringColor.setStroke()
       progress.lineWidth = 1.6
       progress.lineCapStyle = .round
