@@ -44,6 +44,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var menuIsOpen = false
   private var menuRankingChangedWhileOpen = false
   private var displayedMenuSiteIDs: [String] = []
+  private lazy var statusImage = webTimeImage()
 
   private var siteViews: [String: SiteProgressMenuView] = [:]
   private let controlsItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -220,21 +221,14 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private func refreshDisplay(now: Date) {
     let unlocked = controlsAreUnlocked(at: now)
     let displayedSite = configuration.sites.first(where: { activeSiteIDs.contains($0.id) })
+    statusItem.button?.image = statusImage
     if let site = displayedSite {
       let used = ledger.consumed(siteID: site.id)
       let usedFraction = site.dailyLimitSeconds > 0 ? min(1, used / site.dailyLimitSeconds) : 1
       let remaining = max(0, site.dailyLimitSeconds - used)
-      let blocked = ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
-      let favicon = faviconLoader.image(for: site) { [weak self] in
-        self?.refreshDisplay(now: Date())
-      }
-      statusItem.button?.image = gaugeImage(
-        remainingFraction: 1 - usedFraction, blocked: blocked, favicon: favicon,
-        fallbackLetter: String(site.name.prefix(1)).uppercased())
       statusItem.button?.toolTip =
         "\(site.name): \(format(remaining)) remaining of \(format(site.dailyLimitSeconds)) — \(Int(usedFraction * 100))% used"
     } else {
-      statusItem.button?.image = webTimeImage()
       statusItem.button?.toolTip =
         configuration.sites.isEmpty
         ? "Web Time — no websites configured" : "Web Time — nothing being counted"
@@ -440,59 +434,28 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     return Array(Set(hints))
   }
 
-  private func gaugeImage(
-    remainingFraction: Double, blocked: Bool, favicon: NSImage?, fallbackLetter: String,
-  ) -> NSImage {
-    let color: NSColor =
-      remainingFraction > 0.5
-      ? .systemGreen : (remainingFraction > 0.1 ? .systemYellow : .systemRed)
-    let size = NSSize(width: 18, height: 18)
-    let image = NSImage(size: size, flipped: false) { rect in
-      let center = NSPoint(x: rect.midX, y: rect.midY)
-      let iconRect = NSRect(x: center.x - 6.5, y: center.y - 6.5, width: 13, height: 13)
-      if let favicon {
-        NSGraphicsContext.saveGraphicsState()
-        NSBezierPath(roundedRect: iconRect, xRadius: 2.5, yRadius: 2.5).addClip()
-        favicon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1)
-        NSGraphicsContext.restoreGraphicsState()
-      } else {
-        let attributes: [NSAttributedString.Key: Any] = [
-          .font: NSFont.systemFont(ofSize: 11, weight: .bold), .foregroundColor: NSColor.labelColor,
-        ]
-        let text = NSAttributedString(string: fallbackLetter, attributes: attributes)
-        text.draw(at: NSPoint(x: center.x - text.size().width / 2, y: center.y - 6))
-      }
-      let dotRect = NSRect(x: 12.5, y: 1, width: 5, height: 5)
-      NSColor.windowBackgroundColor.setFill()
-      NSBezierPath(ovalIn: dotRect.insetBy(dx: -1, dy: -1)).fill()
-      (blocked ? NSColor.systemRed : color).setFill()
-      NSBezierPath(ovalIn: dotRect).fill()
-      return true
-    }
-    image.isTemplate = false
-    image.accessibilityDescription = "Website allowance gauge"
-    return image
-  }
-
   private func webTimeImage() -> NSImage {
     let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
-      let ring = NSBezierPath(ovalIn: NSRect(x: 2.5, y: 2.5, width: 13, height: 13))
-      ring.lineWidth = 1.8
-      NSColor.secondaryLabelColor.setStroke()
+      NSColor.black.setStroke()
+      let ring = NSBezierPath()
+      ring.appendArc(
+        withCenter: NSPoint(x: rect.midX, y: rect.midY), radius: 6.5,
+        startAngle: 38, endAngle: 334)
+      ring.lineWidth = 2.1
+      ring.lineCapStyle = .round
       ring.stroke()
       let hand = NSBezierPath()
       hand.move(to: NSPoint(x: rect.midX, y: rect.midY))
-      hand.line(to: NSPoint(x: rect.midX, y: 12.5))
+      hand.line(to: NSPoint(x: rect.midX, y: 13))
       hand.move(to: NSPoint(x: rect.midX, y: rect.midY))
-      hand.line(to: NSPoint(x: 12, y: 6.5))
-      hand.lineWidth = 1.4
+      hand.line(to: NSPoint(x: 12.5, y: 6.5))
+      hand.lineWidth = 1.8
       hand.lineCapStyle = .round
-      NSColor.secondaryLabelColor.setStroke()
       hand.stroke()
       return true
     }
-    image.isTemplate = false
-    image.accessibilityDescription = "Web Time idle"
+    image.isTemplate = true
+    image.accessibilityDescription = "Web Time"
     return image
   }
 

@@ -8,6 +8,19 @@ private struct UsageChartBar {
 }
 
 @MainActor
+private final class StatisticsBackgroundView: NSView {
+  override func draw(_ dirtyRect: NSRect) {
+    NSColor.underPageBackgroundColor.setFill()
+    NSBezierPath(rect: dirtyRect).fill()
+  }
+
+  override func viewDidChangeEffectiveAppearance() {
+    super.viewDidChangeEffectiveAppearance()
+    needsDisplay = true
+  }
+}
+
+@MainActor
 private final class UsageChartView: NSView {
   var bars: [UsageChartBar] = [] { didSet { needsDisplay = true } }
   var colors: [NSColor] = [] { didSet { needsDisplay = true } }
@@ -142,9 +155,13 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     window.title = "Web Time Statistics"
     window.titlebarAppearsTransparent = true
     window.isMovableByWindowBackground = true
+    window.backgroundColor = .underPageBackgroundColor
+    let content = StatisticsBackgroundView(frame: window.contentView?.bounds ?? .zero)
+    content.autoresizingMask = [.width, .height]
+    window.contentView = content
     window.center()
     super.init(window: window)
-    buildUI(in: window.contentView!)
+    buildUI(in: content)
     refresh(animated: false)
   }
 
@@ -157,9 +174,6 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   }
 
   private func buildUI(in content: NSView) {
-    content.wantsLayer = true
-    content.layer?.backgroundColor = NSColor.underPageBackgroundColor.cgColor
-
     let title = NSTextField(labelWithString: "App & Website Activity")
     title.frame = NSRect(x: 28, y: 663, width: 440, height: 30)
     title.font = .systemFont(ofSize: 22, weight: .semibold)
@@ -242,7 +256,8 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     let box = NSBox(frame: frame)
     box.boxType = .custom
     box.cornerRadius = 12
-    box.borderWidth = 0
+    box.borderWidth = 0.5
+    box.borderColor = .separatorColor
     box.fillColor = .controlBackgroundColor
     return box
   }
