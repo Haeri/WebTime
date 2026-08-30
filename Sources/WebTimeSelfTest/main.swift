@@ -90,6 +90,9 @@ rollover.resetIfNeeded(at: midnight.addingTimeInterval(20))
 expect(
   rollover.usage.day == "2026-08-31" && rollover.usage.consumedBySite.isEmpty,
   "usage resets at local calendar-day rollover")
+expect(
+  !rollover.shouldBlock(siteID: "youtube", limit: 500),
+  "day rollover re-enables a website that exhausted yesterday's allowance")
 
 expect(SiteDomains.host("youtube.com", matchesAny: ["youtube.com"]), "exact domain matches")
 expect(
