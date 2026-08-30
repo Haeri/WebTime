@@ -212,14 +212,20 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     self.faviconLoader = faviconLoader
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 700, height: 760),
-      styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+      styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView], backing: .buffered,
+      defer: false)
     window.title = "Web Time Statistics"
     window.titleVisibility = .hidden
     window.titlebarAppearsTransparent = true
     window.isMovableByWindowBackground = true
-    window.backgroundColor = statisticsCanvasColor
+    window.isOpaque = false
+    window.backgroundColor = .clear
     let content = StatisticsBackgroundView(frame: window.contentView?.bounds ?? .zero)
     content.autoresizingMask = [.width, .height]
+    content.wantsLayer = true
+    content.layer?.cornerRadius = 20
+    content.layer?.cornerCurve = .continuous
+    content.layer?.masksToBounds = true
     window.contentView = content
     window.center()
     super.init(window: window)
@@ -318,7 +324,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   private func panel(frame: NSRect) -> NSBox {
     let box = NSBox(frame: frame)
     box.boxType = .custom
-    box.cornerRadius = 14
+    box.cornerRadius = 18
     box.borderWidth = 0.5
     box.borderColor = .separatorColor
     box.fillColor = statisticsPanelColor
