@@ -41,7 +41,58 @@
         </div>
 
         <div class="hero-visual reveal" aria-label="Web Time menu-bar controls">
-          <img class="hero-product-shot" src="assets/web-time-menu.png" alt="The Web Time menu showing remaining daily allowances for YouTube, Instagram, and Twitch">
+          <div class="web-time-menu" role="img" aria-label="The Web Time menu showing remaining daily allowances for YouTube, Instagram, and Twitch">
+            <div class="preview-site">
+              <span class="preview-favicon" aria-hidden="true">
+                <svg viewBox="0 0 28 28">
+                  <rect x="2" y="6" width="24" height="16" rx="5" fill="#ff0033"></rect>
+                  <path d="M12 10.3 19 14l-7 3.7Z" fill="#fff"></path>
+                </svg>
+              </span>
+              <span class="preview-site-copy"><strong>YouTube</strong><small>20m left · 83% used · 2h set</small></span>
+              <svg class="preview-play" viewBox="0 0 16 18" aria-label="Currently counting"><path d="M2 1.5 14.5 9 2 16.5Z"></path></svg>
+              <span class="preview-allowance preview-allowance-warning"><i style="width: 17%"></i></span>
+            </div>
+            <div class="preview-site">
+              <span class="preview-favicon" aria-hidden="true">
+                <svg viewBox="0 0 28 28">
+                  <defs><radialGradient id="instagram-gradient" cx="30%" cy="105%" r="120%"><stop offset="0" stop-color="#ffd600"></stop><stop offset=".34" stop-color="#ff7a00"></stop><stop offset=".64" stop-color="#e1306c"></stop><stop offset="1" stop-color="#833ab4"></stop></radialGradient></defs>
+                  <rect x="2" y="2" width="24" height="24" rx="6.5" fill="url(#instagram-gradient)"></rect>
+                  <rect x="7.5" y="7.5" width="13" height="13" rx="4.2" fill="none" stroke="#fff" stroke-width="2"></rect>
+                  <circle cx="14" cy="14" r="3.2" fill="none" stroke="#fff" stroke-width="2"></circle>
+                  <circle cx="19.3" cy="8.8" r="1.15" fill="#fff"></circle>
+                </svg>
+              </span>
+              <span class="preview-site-copy"><strong>Instagram</strong><small>49m left · 18% used · 1h set</small></span>
+              <span class="preview-allowance"><i style="width: 82%"></i></span>
+            </div>
+            <div class="preview-site">
+              <span class="preview-favicon" aria-hidden="true">
+                <svg viewBox="0 0 28 28">
+                  <path d="M4 3h21v15.2l-5.3 5.2h-5.1l-3.2 3.1v-3.1H7.2V7.2Z" fill="#9146ff"></path>
+                  <path d="M8.2 6.2h13.7v10.6l-3.8 3.7h-4.4l-2.2 2.1v-2.1H8.2Z" fill="#fff"></path>
+                  <path d="M13 9.4v6.3M17.5 9.4v6.3" stroke="#9146ff" stroke-width="2.1"></path>
+                </svg>
+              </span>
+              <span class="preview-site-copy"><strong>Twitch</strong><small>57m left · 5% used · 1h set</small></span>
+              <span class="preview-allowance"><i style="width: 95%"></i></span>
+            </div>
+
+            <div class="preview-separator"></div>
+            <div class="preview-action preview-statistics"><span>Statistics...</span><kbd>⌘S</kbd></div>
+            <div class="preview-separator"></div>
+            <div class="preview-action preview-status" aria-disabled="true">
+              <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3.5" y="7.5" width="11" height="8" rx="2"></rect><path d="M6 7.5V5.7a3 3 0 0 1 6 0v1.8"></path></svg>
+              <span>Controls locked</span>
+            </div>
+            <div class="preview-action preview-indented">
+              <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3.5" y="7.5" width="11" height="8" rx="2"></rect><path d="M7 7.5V5.7a3 3 0 0 1 5.7-1.3"></path></svg>
+              <span>Unlock controls...</span>
+            </div>
+            <div class="preview-action preview-disabled" aria-disabled="true"><span>Manage websites...</span><kbd>⌘,</kbd></div>
+            <div class="preview-action preview-disabled" aria-disabled="true"><span>Quit Web Time</span><kbd>⌘Q</kbd></div>
+          </div>
+          <img class="hero-product-fallback" src="assets/web-time-menu.png" alt="The Web Time menu showing remaining daily allowances for YouTube, Instagram, and Twitch">
         </div>
       </section>
 
