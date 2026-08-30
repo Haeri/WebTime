@@ -15,7 +15,7 @@ This repository is intentionally small: no account, browser extension, analytics
 - Tracks multiple websites across Safari, Chrome, Firefox, Brave, Edge, native wrappers, and other local clients using network connections rather than browser history.
 - Gives every configured website its own domain set, daily allowance, usage counter, and block state.
 - Counts active transfer time only when its owning browser is the foreground app, with a short warm buffer for bursty video and feed loading.
-- Shows a favicon, activity state, exact remaining time, configured allowance, and a color-coded bar that drains for the five most-used websites, ordered by today's usage. The compact menu-bar icon uses the Web Time stopwatch while idle, then switches to the active website favicon inside a white ring that turns red for the final 10%. Manage Websites and Statistics always retain the full list.
+- Shows a favicon, activity state, exact remaining time, configured allowance, and a color-coded bar that drains for the five most-used websites, ordered by today's usage. The compact menu-bar icon uses the Web Time stopwatch while idle, then switches to the active website favicon inside a circular remaining-time indicator that turns red for the final 10%. Manage Websites and Statistics always retain the full list.
 - Selects one most-recently active website as the usage bucket, so background traffic cannot consume two allowances simultaneously.
 - Blocks each exhausted site's DNS names and learned delivery addresses independently. Existing TCP and QUIC states are killed at cutoff.
 - Locks administrative controls by default. A fresh 12-word manual typing challenge unlocks site editing and Quit; five minutes without app interaction relocks them.

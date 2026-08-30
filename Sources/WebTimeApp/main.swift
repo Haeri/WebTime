@@ -477,7 +477,8 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private func activeSiteImage(
     favicon: NSImage?, fallbackLetter: String, remainingFraction: Double, blocked: Bool
   ) -> NSImage {
-    let ringColor: NSColor = blocked || remainingFraction <= 0.1 ? .systemRed : .white
+    let visibleFraction = min(1, max(0, remainingFraction))
+    let ringColor: NSColor = blocked || visibleFraction <= 0.1 ? .systemRed : .white
     let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
       let iconRect = NSRect(x: 3, y: 3, width: 12, height: 12)
       NSGraphicsContext.saveGraphicsState()
@@ -495,13 +496,25 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         text.draw(at: NSPoint(x: iconRect.midX - text.size().width / 2, y: iconRect.midY - 6))
       }
       NSGraphicsContext.restoreGraphicsState()
-      let ring = NSBezierPath(ovalIn: NSRect(x: 1, y: 1, width: 16, height: 16))
+
+      let ringRect = NSRect(x: 1.25, y: 1.25, width: 15.5, height: 15.5)
+      let track = NSBezierPath(ovalIn: ringRect)
       NSColor.black.withAlphaComponent(0.26).setStroke()
-      ring.lineWidth = 3
-      ring.stroke()
+      track.lineWidth = 3
+      track.stroke()
+      NSColor.white.withAlphaComponent(0.28).setStroke()
+      track.lineWidth = 1.6
+      track.stroke()
+
+      guard visibleFraction > 0 else { return true }
+      let progress = NSBezierPath()
+      progress.appendArc(
+        withCenter: NSPoint(x: ringRect.midX, y: ringRect.midY), radius: ringRect.width / 2,
+        startAngle: 90, endAngle: 90 - 360 * CGFloat(visibleFraction), clockwise: true)
       ringColor.setStroke()
-      ring.lineWidth = 1.6
-      ring.stroke()
+      progress.lineWidth = 1.6
+      progress.lineCapStyle = .round
+      progress.stroke()
       return true
     }
     image.isTemplate = false
