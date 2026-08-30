@@ -190,6 +190,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private func buildMenu() {
     let menu = NSMenu()
     menu.delegate = self
+    menu.autoenablesItems = false
     statusItem.button?.imagePosition = .imageOnly
     siteViews.removeAll()
     let menuSites = rankedMenuSites
