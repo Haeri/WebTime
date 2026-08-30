@@ -108,13 +108,6 @@ a { color: inherit; }
 .preview-unlock { min-height: 31px; }
 .preview-disabled { min-height: 29px; color: rgba(60,60,67,.34); font-weight: 520; }
 .preview-disabled kbd { color: inherit; }
-.hero-product-fallback { display: none; position: relative; width: min(360px, 76vw); border-radius: 18px; box-shadow: 0 42px 90px rgba(30,38,56,.24), 0 2px 9px rgba(0,0,0,.12); }
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .web-time-menu { display: none; }
-  .hero-product-fallback { display: block; }
-}
-
 .statement { min-height: 830px; padding: 150px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: var(--surface); }
 .statement h2 { max-width: 1180px; font-size: 80px; line-height: 1.05; }
 .statement-copy { max-width: 940px; margin: 43px auto 0; color: var(--muted); font-size: 21px; line-height: 1.381; letter-spacing: .011em; font-weight: 600; }
@@ -192,7 +185,7 @@ footer a:hover { text-decoration: underline; }
   .hero { min-height: 900px; padding: 112px 18px 80px; }
   .hero-actions { flex-direction: column; gap: 17px; }
   .hero-visual { min-height: 350px; margin-top: 38px; }
-  .web-time-menu, .hero-product-fallback { width: min(360px, 90vw); border-radius: 16px; }
+  .web-time-menu { width: min(360px, 90vw); border-radius: 16px; }
   .statement { min-height: 690px; padding: 110px 20px; }
   .feature-stage { min-height: 1000px; padding: 105px 16px 100px; }
   .real-statistics-window img { border-radius: 14px; }

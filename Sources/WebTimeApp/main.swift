@@ -123,6 +123,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     let image =
       NSImage(systemSymbolName: "stopwatch", accessibilityDescription: "Web Time")
       ?? NSImage()
+    image.alignmentRect = NSRect(origin: .zero, size: image.size)
     image.isTemplate = true
     return image
   }()
@@ -580,7 +581,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     let visibleFraction = min(1, max(0, remainingFraction))
     let ringColor: NSColor = blocked || visibleFraction <= 0.1 ? .systemRed : .white
     let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
-      let iconRect = NSRect(x: 3, y: 3, width: 12, height: 12)
+      let iconRect = NSRect(x: 3.5, y: 3.5, width: 11, height: 11)
       NSGraphicsContext.saveGraphicsState()
       NSBezierPath(roundedRect: iconRect, xRadius: 2.8, yRadius: 2.8).addClip()
       if let favicon {
