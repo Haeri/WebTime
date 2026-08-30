@@ -234,12 +234,12 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         favicon: favicon, fallbackLetter: String(site.name.prefix(1)).uppercased(),
         remainingFraction: 1 - usedFraction, blocked: blocked)
       statusItem.button?.toolTip =
-        "\(site.name): \(format(remaining)) remaining of \(format(site.dailyLimitSeconds)) — \(Int(usedFraction * 100))% used"
+        "\(site.name): \(format(remaining)) remaining of \(format(site.dailyLimitSeconds)) · \(Int(usedFraction * 100))% used"
     } else {
       statusItem.button?.image = idleStatusImage
       statusItem.button?.toolTip =
         configuration.sites.isEmpty
-        ? "Web Time — no websites configured" : "Web Time — nothing being counted"
+        ? "Web Time: no websites configured" : "Web Time: nothing being counted"
     }
     statusItem.button?.title = ""
 
@@ -256,7 +256,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
     if unlocked, let until = controlsSession.unlockedUntil {
       let minutes = max(1, Int(ceil(until.timeIntervalSince(now) / 60)))
-      updateControlsStatus("Controls unlocked — relocks in \(minutes)m", symbol: "lock.open.fill")
+      updateControlsStatus("Controls unlocked, relocks in \(minutes)m", symbol: "lock.open.fill")
       lockActionItem.title = "Lock controls now"
       lockActionItem.image = menuSymbol("lock.fill", description: "Lock controls")
     } else {

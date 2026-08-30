@@ -87,7 +87,7 @@ The uninstall script unloads both services, clears the private PF anchor, restor
 
 ## How tracking works
 
-The root daemon receives system DNS requests locally. When an allowed request matches a configured domain, it records the returned A/AAAA addresses under that site's ID—IP addresses are never entered or hardcoded. The menu app takes one `nettop` sample, attributes connection-byte changes to each site and owning process, and counts only when that process matches the foreground app. If `nettop` is unavailable because of local privacy restrictions, it conservatively falls back to matching open sockets.
+The root daemon receives system DNS requests locally. When an allowed request matches a configured domain, it records the returned A/AAAA addresses under that site's ID. IP addresses are never entered or hardcoded. The menu app takes one `nettop` sample, attributes connection-byte changes to each site and owning process, and counts only when that process matches the foreground app. If `nettop` is unavailable because of local privacy restrictions, it conservatively falls back to matching open sockets.
 
 This is closer to actual consumption than counting time merely because a tab exists. Media loads in bursts, so each foreground burst keeps that site “warm” for the configured grace period. Switching to another app now stops eligibility immediately. Two tabs in the same foreground browser cannot be distinguished perfectly, and reading a completely static page after all network activity stops can be undercounted. Reliably knowing the foreground URL in every browser would require intrusive Accessibility/Automation permissions or separate browser extensions; this version deliberately stays permission-free.
 
@@ -135,7 +135,7 @@ If websites are not being tracked, first inspect the daemon log. Port 53 may alr
 
 Core behavior is covered by a dependency-free self-test executable for independent counters and limits, persistence, daily rollover, domain normalization/boundaries, known CDN expansion, DNS parsing/NXDOMAIN generation, one-time challenges, and per-site `nettop` attribution. The scripts are checked with `bash -n` and all plists with `plutil -lint`.
 
-Pushing a version tag matching `Resources/Info.plist`—for example `v0.6.0`—runs the macOS release workflow, verifies the version, runs the self-tests, builds the app and daemon, creates `Web-Time.dmg` plus its checksum, and publishes a GitHub release. Pushes to `main` that change `docs/` deploy the one-page site through GitHub Pages.
+Pushing a version tag matching `Resources/Info.plist`, for example `v0.6.0`, runs the macOS release workflow, verifies the version, runs the self-tests, builds the app and daemon, creates `Web-Time.dmg` plus its checksum, and publishes a GitHub release. Pushes to `main` that change `docs/` deploy the one-page site through GitHub Pages.
 
 ## License
 

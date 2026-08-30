@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#f5f5f7">
     <meta name="description" content="Web Time is a private, native macOS menu-bar app that gives distracting websites a daily allowance and blocks them when time runs out.">
     <meta property="og:title" content="Web Time for macOS">
-    <meta property="og:description" content="Your websites. On your time.">
+    <meta property="og:description" content="Set daily limits for distracting websites across every browser on your Mac.">
     <meta property="og:image" content="assets/web-time-1024.png">
-    <title>Web Time — Website allowances for macOS</title>
+    <title>Web Time: Website allowances for macOS</title>
     <link rel="icon" href="assets/web-time-64.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js" defer></script>
@@ -64,11 +64,16 @@
 
       <section class="privacy" id="privacy">
         <div class="privacy-mark reveal" aria-hidden="true">
-          <span class="lock-body"></span><span class="lock-loop"></span>
+          <svg viewBox="0 0 64 72" focusable="false">
+            <path d="M19 29v-9c0-8 5.8-14 13-14s13 6 13 14v9"></path>
+            <rect x="9" y="27" width="46" height="37" rx="11"></rect>
+            <circle cx="32" cy="45" r="3.5"></circle>
+            <path class="key-stem" d="M32 49v7"></path>
+          </svg>
         </div>
         <div class="privacy-copy reveal">
           <p class="eyebrow">Private by design</p>
-          <h2>Great focus comes with<br><span class="gradient-text">great privacy.</span></h2>
+          <h2>Your focus stays yours.<br><span class="gradient-text">So does your data.</span></h2>
           <p>Your settings, activity, and cached site icons stay on your Mac. Web Time has no analytics, advertising, or telemetry.</p>
           <a class="text-link source-link" href="https://github.com/__GITHUB_REPOSITORY__/blob/main/PRIVACY.md">Read the privacy details <span aria-hidden="true">↗</span></a>
         </div>

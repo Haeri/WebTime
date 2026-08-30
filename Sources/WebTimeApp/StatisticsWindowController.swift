@@ -369,7 +369,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
       switch column.identifier.rawValue {
       case "website": return websiteCell(name: "All Websites", site: nil, emphasized: true)
       case "time": return textCell(duration(totals.values.reduce(0, +)), emphasized: true)
-      case "limit": return textCell("—", emphasized: true)
+      case "limit": return textCell("No limit", emphasized: true)
       default: return nil
       }
     }
