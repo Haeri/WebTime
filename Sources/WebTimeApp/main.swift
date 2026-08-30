@@ -3,6 +3,37 @@ import Darwin
 import Foundation
 import WebTimeCore
 
+private enum SingleInstanceLockError: Error {
+  case alreadyRunning
+  case unavailable(Int32)
+}
+
+private final class SingleInstanceLock {
+  private let fileDescriptor: Int32
+
+  init() throws {
+    let lockURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "local.web-time.app-\(getuid()).lock")
+    let descriptor = Darwin.open(
+      lockURL.path, O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, S_IRUSR | S_IWUSR)
+    guard descriptor >= 0 else { throw SingleInstanceLockError.unavailable(errno) }
+
+    guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
+      let lockError = errno
+      Darwin.close(descriptor)
+      if lockError == EWOULDBLOCK { throw SingleInstanceLockError.alreadyRunning }
+      throw SingleInstanceLockError.unavailable(lockError)
+    }
+
+    fileDescriptor = descriptor
+  }
+
+  deinit {
+    flock(fileDescriptor, LOCK_UN)
+    Darwin.close(fileDescriptor)
+  }
+}
+
 @MainActor
 private final class ManualEntryTextField: NSTextField {
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -546,6 +577,16 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 }
 
+private let singleInstanceLock: SingleInstanceLock? = {
+  do {
+    return try SingleInstanceLock()
+  } catch SingleInstanceLockError.alreadyRunning {
+    exit(EXIT_SUCCESS)
+  } catch {
+    // A lock-system failure should not make the limiter unavailable.
+    return nil
+  }
+}()
 private let application = NSApplication.shared
 private let controller = AppController()
 application.delegate = controller
