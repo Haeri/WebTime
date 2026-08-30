@@ -102,10 +102,9 @@ a { color: inherit; }
 .preview-action kbd { color: rgba(60,60,67,.60); font: inherit; letter-spacing: -.02em; }
 .preview-statistics { min-height: 39px; padding-inline: 4px; }
 .preview-statistics + .preview-separator { margin-top: 1px; }
-.preview-status { min-height: 28px; color: rgba(60,60,67,.38); font-size: 14px; font-weight: 540; }
-.preview-action svg { width: 16px; height: 16px; margin-right: 12px; overflow: visible; fill: currentColor; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.preview-status, .preview-indented { justify-content: flex-start; }
-.preview-indented { min-height: 31px; }
+.preview-status { min-height: 28px; justify-content: flex-start; color: rgba(60,60,67,.38); font-size: 14px; font-weight: 540; }
+.preview-status svg { width: 12px; height: 12px; margin-right: 8px; overflow: visible; fill: currentColor; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-.5px); }
+.preview-unlock { min-height: 31px; }
 .preview-disabled { min-height: 29px; color: rgba(60,60,67,.34); font-weight: 520; }
 .preview-disabled kbd { color: inherit; }
 .hero-product-fallback { display: none; position: relative; width: min(360px, 76vw); border-radius: 18px; box-shadow: 0 42px 90px rgba(30,38,56,.24), 0 2px 9px rgba(0,0,0,.12); }
