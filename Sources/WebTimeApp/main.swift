@@ -132,6 +132,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     statisticsItem.target = self
     menu.addItem(statisticsItem)
     menu.addItem(.separator())
+    controlsItem.isEnabled = false
     menu.addItem(controlsItem)
     lockActionItem.target = self
     manageItem.target = self
@@ -255,11 +256,13 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
     if unlocked, let until = controlsSession.unlockedUntil {
       let minutes = max(1, Int(ceil(until.timeIntervalSince(now) / 60)))
-      controlsItem.title = "Controls unlocked — relocks in \(minutes)m"
+      updateControlsStatus("Controls unlocked — relocks in \(minutes)m", symbol: "lock.open.fill")
       lockActionItem.title = "Lock controls now"
+      lockActionItem.image = menuSymbol("lock.fill", description: "Lock controls")
     } else {
-      controlsItem.title = "Controls locked"
+      updateControlsStatus("Controls locked", symbol: "lock.fill")
       lockActionItem.title = "Unlock controls…"
+      lockActionItem.image = menuSymbol("lock.open.fill", description: "Unlock controls")
     }
     manageItem.isEnabled = unlocked
     quitItem.isEnabled = unlocked
@@ -267,6 +270,22 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
   private func controlsAreUnlocked(at date: Date) -> Bool {
     controlsSession.isUnlocked(at: date)
+  }
+
+  private func updateControlsStatus(_ title: String, symbol: String) {
+    controlsItem.attributedTitle = NSAttributedString(
+      string: title,
+      attributes: [
+        .font: NSFont.systemFont(ofSize: 11, weight: .regular),
+        .foregroundColor: NSColor.secondaryLabelColor,
+      ])
+    controlsItem.image = menuSymbol(symbol, description: title)
+  }
+
+  private func menuSymbol(_ name: String, description: String) -> NSImage? {
+    let configuration = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+    return NSImage(systemSymbolName: name, accessibilityDescription: description)?
+      .withSymbolConfiguration(configuration)
   }
 
   private func touchControls() {
@@ -461,11 +480,9 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
       let hand = NSBezierPath()
       hand.move(to: NSPoint(x: 9, y: 8.5))
-      hand.line(to: NSPoint(x: 9, y: 11.7))
-      hand.line(to: NSPoint(x: 11.3, y: 9.7))
+      hand.line(to: NSPoint(x: 11.5, y: 11.7))
       hand.lineWidth = 1.65
       hand.lineCapStyle = .round
-      hand.lineJoinStyle = .round
       hand.stroke()
       return true
     }

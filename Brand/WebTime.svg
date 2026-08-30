@@ -18,6 +18,6 @@
   <g fill="none" stroke="#FFFFFF" stroke-width="78" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)">
     <circle cx="512" cy="566" r="255"/>
     <path d="M446 226h132M512 226v84M700 362l76-76"/>
-    <path d="M512 566V430l104 92"/>
+    <path d="M512 566L590 445"/>
   </g>
 </svg>
