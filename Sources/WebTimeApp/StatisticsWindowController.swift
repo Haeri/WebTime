@@ -5,12 +5,14 @@ import WebTimeCore
 private struct UsageChartBar {
   var label: String
   var values: [TimeInterval]
+  var limitHitSiteIndices: [Int] = []
 }
 
 private struct UsageLegendItem {
   var name: String
   var duration: String
   var color: NSColor
+  var limitReached: Bool
 }
 
 private let statisticsCanvasColor = NSColor(name: nil) { appearance in
@@ -50,10 +52,6 @@ private final class UsageLegendView: NSView {
       .font: NSFont.systemFont(ofSize: 10.5, weight: .medium),
       .foregroundColor: NSColor.secondaryLabelColor,
     ]
-    let durationAttributes: [NSAttributedString.Key: Any] = [
-      .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
-      .foregroundColor: NSColor.labelColor,
-    ]
     for (index, item) in items.prefix(3).enumerated() {
       let x = CGFloat(index) * slotWidth
       item.color.setFill()
@@ -61,7 +59,12 @@ private final class UsageLegendView: NSView {
         .fill()
       NSAttributedString(string: item.name, attributes: nameAttributes).draw(
         in: NSRect(x: x + 14, y: 21, width: slotWidth - 18, height: 17))
-      NSAttributedString(string: item.duration, attributes: durationAttributes).draw(
+      let durationAttributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+        .foregroundColor: item.limitReached ? NSColor.systemRed : NSColor.labelColor,
+      ]
+      let duration = item.limitReached ? "\(item.duration) · Limit reached" : item.duration
+      NSAttributedString(string: duration, attributes: durationAttributes).draw(
         in: NSRect(x: x + 14, y: 3, width: slotWidth - 18, height: 17))
     }
   }
@@ -139,6 +142,15 @@ private final class UsageChartView: NSView {
           topRoundedPath(rect, radius: min(3, rect.width / 2, rect.height)).fill()
         } else {
           NSBezierPath(rect: rect).fill()
+        }
+        if bar.limitHitSiteIndices.contains(valueIndex) {
+          NSColor.systemRed.setStroke()
+          let limitMarker = NSBezierPath()
+          limitMarker.move(to: NSPoint(x: rect.minX - 1, y: rect.maxY))
+          limitMarker.line(to: NSPoint(x: rect.maxX + 1, y: rect.maxY))
+          limitMarker.lineWidth = 2
+          limitMarker.lineCapStyle = .round
+          limitMarker.stroke()
         }
         y += height
       }
@@ -378,7 +390,12 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     switch column.identifier.rawValue {
     case "website": return websiteCell(name: site.name, site: site, emphasized: false)
     case "time": return textCell(duration(totals[site.id, default: 0]), emphasized: false)
-    case "limit": return textCell(duration(site.dailyLimitSeconds), emphasized: false)
+    case "limit":
+      let reached = history.limitHitHourBySite[dayKey(selectedDate)]?[site.id] != nil
+      return textCell(
+        reached
+          ? "\(duration(site.dailyLimitSeconds)) · Reached" : duration(site.dailyLimitSeconds),
+        emphasized: false, color: reached ? .systemRed : nil)
     default: return nil
     }
   }
@@ -403,11 +420,12 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     return view
   }
 
-  private func textCell(_ value: String, emphasized: Bool) -> NSView {
+  private func textCell(_ value: String, emphasized: Bool, color: NSColor? = nil) -> NSView {
     let container = NSView(frame: NSRect(x: 0, y: 0, width: 150, height: 34))
     let field = NSTextField(labelWithString: value)
     field.frame = NSRect(x: 0, y: 6, width: 148, height: 22)
     field.font = .monospacedDigitSystemFont(ofSize: 13, weight: emphasized ? .semibold : .regular)
+    if let color { field.textColor = color }
     field.lineBreakMode = .byTruncatingTail
     container.addSubview(field)
     return container
@@ -436,9 +454,12 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     weekday.dateFormat = "EEEEE"
     let weekDates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: weekStart) }
     weeklyChart.bars = weekDates.map { date in
-      let values = history.days[dayKey(date), default: [:]]
+      let key = dayKey(date)
+      let values = history.days[key, default: [:]]
+      let hits = history.limitHitHourBySite[key, default: [:]]
       return UsageChartBar(
-        label: weekday.string(from: date), values: orderedSites.map { values[$0.id, default: 0] })
+        label: weekday.string(from: date), values: orderedSites.map { values[$0.id, default: 0] },
+        limitHitSiteIndices: orderedSites.indices.filter { hits[orderedSites[$0].id] != nil })
     }
     weeklyChart.selectedIndex = weekDates.firstIndex {
       calendar.isDate($0, inSameDayAs: selectedDate)
@@ -450,15 +471,18 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     }.map { index, site in
       UsageLegendItem(
         name: site.name, duration: duration(totals[site.id, default: 0]),
-        color: palette[index % palette.count])
+        color: palette[index % palette.count],
+        limitReached: history.limitHitHourBySite[dayKey(selectedDate)]?[site.id] != nil)
     }
 
     let hours = history.hourly[dayKey(selectedDate), default: [:]]
     hourlyChart.bars = (0..<24).map { hour in
       let values = hours[String(format: "%02d", hour), default: [:]]
+      let hits = history.limitHitHourBySite[dayKey(selectedDate), default: [:]]
       return UsageChartBar(
         label: hour % 6 == 0 ? String(format: "%02d", hour) : "",
-        values: orderedSites.map { values[$0.id, default: 0] })
+        values: orderedSites.map { values[$0.id, default: 0] },
+        limitHitSiteIndices: orderedSites.indices.filter { hits[orderedSites[$0].id] == hour })
     }
     hourlyChart.selectedIndex = nil
     refreshTable()

@@ -62,24 +62,33 @@ public struct DailyUsage: Codable, Equatable, Sendable {
 public struct UsageHistory: Codable, Equatable, Sendable {
   public var days: [String: [String: TimeInterval]]
   public var hourly: [String: [String: [String: TimeInterval]]]
+  public var limitHitHourBySite: [String: [String: Int]]
 
   public init(
     days: [String: [String: TimeInterval]] = [:],
-    hourly: [String: [String: [String: TimeInterval]]] = [:]
+    hourly: [String: [String: [String: TimeInterval]]] = [:],
+    limitHitHourBySite: [String: [String: Int]] = [:]
   ) {
     self.days = days
     self.hourly = hourly
+    self.limitHitHourBySite = limitHitHourBySite
   }
 
   public mutating func record(
     totals: [String: TimeInterval], increments: [String: TimeInterval], at date: Date,
-    calendar: Calendar = .current
+    limits: [String: TimeInterval], calendar: Calendar = .current
   ) {
     let day = UsageLedger.dayKey(for: date, calendar: calendar)
     days[day] = totals
-    let hour = String(format: "%02d", calendar.component(.hour, from: date))
+    let hourValue = calendar.component(.hour, from: date)
+    let hour = String(format: "%02d", hourValue)
     for (siteID, seconds) in increments where seconds > 0 {
       hourly[day, default: [:]][hour, default: [:]][siteID, default: 0] += seconds
+    }
+    for (siteID, limit) in limits where limit > 0 && totals[siteID, default: 0] >= limit {
+      if limitHitHourBySite[day, default: [:]][siteID] == nil {
+        limitHitHourBySite[day, default: [:]][siteID] = hourValue
+      }
     }
   }
 
@@ -88,6 +97,7 @@ public struct UsageHistory: Codable, Equatable, Sendable {
     for key in keysToRemove {
       days.removeValue(forKey: key)
       hourly.removeValue(forKey: key)
+      limitHitHourBySite.removeValue(forKey: key)
     }
   }
 }

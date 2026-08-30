@@ -13,7 +13,7 @@ A native macOS menu-bar app that gives distracting websites daily limits. Web Ti
 - Separate daily limits for each website
 - Works across Safari, Chrome, Firefox, other browsers, and native apps
 - Menu-bar progress and Screen Time-style usage statistics
-- Automatically blocks a website when its allowance is exhausted
+- Automatically blocks exhausted websites, with an unlocked 15-minute snooze
 - Typing challenge protects settings and quitting from impulsive changes
 - No account, analytics, telemetry, or cloud storage
 

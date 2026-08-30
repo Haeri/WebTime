@@ -102,6 +102,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var configuration = LimiterConfiguration()
   private var ledger = UsageLedger()
   private var history = UsageHistory()
+  private var snoozes = SiteSnoozeState()
   private var timer: Timer?
   private var interactionMonitor: Any?
   private var sampleInFlight = false
@@ -127,7 +128,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private let manageItem = NSMenuItem(
     title: "Manage websites…", action: #selector(manageWebsites), keyEquivalent: ",")
   private let statisticsItem = NSMenuItem(
-    title: "Statistics…", action: #selector(showStatistics), keyEquivalent: "s")
+    title: "Statistics", action: #selector(showStatistics), keyEquivalent: "s")
   private let quitItem = NSMenuItem(
     title: "Quit Web Time", action: #selector(quitApplication), keyEquivalent: "q")
 
@@ -193,7 +194,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     displayedMenuSiteIDs = menuSites.map(\.id)
     for site in menuSites {
       let item = NSMenuItem()
-      let view = SiteProgressMenuView()
+      let view = SiteProgressMenuView { [weak self] in self?.snooze(siteID: site.id) }
       item.view = view
       siteViews[site.id] = view
       menu.addItem(item)
@@ -220,8 +221,15 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
   private func update(now: Date) {
     archiveAndResetIfNeeded(at: now)
-    let increments = ledger.tick(at: now, activeSiteIDs: activeSiteIDs, limits: limitsBySite)
-    history.record(totals: ledger.usage.consumedBySite, increments: increments, at: now)
+    if snoozes.removeExpired(at: now) { lastPolicies = nil }
+    let snoozedSiteIDs = Set(
+      configuration.sites.lazy.filter { self.snoozes.isActive(siteID: $0.id, at: now) }.map(\.id))
+    let increments = ledger.tick(
+      at: now, activeSiteIDs: activeSiteIDs, limits: limitsBySite,
+      allowOverLimitSiteIDs: snoozedSiteIDs)
+    history.record(
+      totals: ledger.usage.consumedBySite, increments: increments, at: now,
+      limits: limitsBySite)
     history.trim(keepingRecentDays: 400)
     if controlsSession.unlockedUntil != nil && !controlsAreUnlocked(at: now) { lockControls() }
     persist()
@@ -259,13 +267,17 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     }
   }
 
-  private func policies(allAllowed: Bool = false) -> [DaemonSitePolicy] {
+  private func policies(allAllowed: Bool = false, at date: Date = Date()) -> [DaemonSitePolicy] {
     configuration.sites.map { site in
       DaemonSitePolicy(
         id: site.id, domains: site.domains,
-        blocked: allAllowed
-          ? false : ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds))
+        blocked: allAllowed ? false : isSiteBlocked(site, at: date))
     }
+  }
+
+  private func isSiteBlocked(_ site: SiteConfiguration, at date: Date) -> Bool {
+    ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
+      && !snoozes.isActive(siteID: site.id, at: date)
   }
 
   private func syncPoliciesIfNeeded() {
@@ -278,7 +290,12 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
       DispatchQueue.main.async {
         guard let self else { return }
         self.policySyncInFlight = false
-        if result?.ok == true { self.lastPolicies = desired } else { self.daemonOnline = false }
+        if result?.ok == true {
+          self.lastPolicies = desired
+          self.syncPoliciesIfNeeded()
+        } else {
+          self.daemonOnline = false
+        }
         self.refreshDisplay(now: Date())
       }
     }
@@ -289,6 +306,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     if ledger.usage.day != today {
       history.days[ledger.usage.day] = ledger.usage.consumedBySite
       ledger.resetIfNeeded(at: date)
+      snoozes.removeAll()
       lastPolicies = nil
     }
   }
@@ -299,8 +317,9 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     if let site = displayedSite {
       let used = ledger.consumed(siteID: site.id)
       let usedFraction = site.dailyLimitSeconds > 0 ? min(1, used / site.dailyLimitSeconds) : 1
-      let remaining = max(0, site.dailyLimitSeconds - used)
-      let blocked = ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
+      let snoozeRemaining = snoozes.remaining(siteID: site.id, at: now)
+      let remaining = snoozeRemaining > 0 ? snoozeRemaining : max(0, site.dailyLimitSeconds - used)
+      let blocked = isSiteBlocked(site, at: now)
       let favicon = faviconLoader.image(for: site) { [weak self] in
         self?.refreshDisplay(now: Date())
       }
@@ -308,7 +327,9 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         favicon: favicon, fallbackLetter: String(site.name.prefix(1)).uppercased(),
         remainingFraction: 1 - usedFraction, blocked: blocked)
       statusItem.button?.toolTip =
-        "\(site.name): \(format(remaining)) remaining of \(format(site.dailyLimitSeconds)) · \(Int(usedFraction * 100))% used"
+        snoozeRemaining > 0
+        ? "\(site.name): snoozed for \(format(remaining))"
+        : "\(site.name): \(format(remaining)) remaining of \(format(site.dailyLimitSeconds)) · \(Int(usedFraction * 100))% used"
     } else {
       statusItem.button?.image = idleStatusImage
       statusItem.button?.toolTip =
@@ -319,13 +340,17 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
     for site in configuration.sites {
       let used = ledger.consumed(siteID: site.id)
-      let blocked = ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
+      let allowanceExhausted = ledger.shouldBlock(
+        siteID: site.id, limit: site.dailyLimitSeconds)
+      let snoozeRemaining = snoozes.remaining(siteID: site.id, at: now)
+      let blocked = allowanceExhausted && snoozeRemaining <= 0
       let favicon = faviconLoader.image(for: site) { [weak self] in
         self?.refreshDisplay(now: Date())
       }
       siteViews[site.id]?.update(
         name: site.name, favicon: favicon, used: used, limit: site.dailyLimitSeconds,
-        active: activeSiteIDs.contains(site.id), blocked: blocked)
+        active: activeSiteIDs.contains(site.id), blocked: blocked,
+        canSnooze: unlocked && blocked, snoozeRemaining: snoozeRemaining)
     }
 
     if unlocked, let until = controlsSession.unlockedUntil {
@@ -339,6 +364,19 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     lockActionItem.image = nil
     manageItem.isEnabled = unlocked
     quitItem.isEnabled = unlocked
+  }
+
+  private func snooze(siteID: String) {
+    let now = Date()
+    guard controlsAreUnlocked(at: now),
+      let site = configuration.sites.first(where: { $0.id == siteID }),
+      ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
+    else { return }
+    snoozes.snooze(siteID: site.id, at: now)
+    lastPolicies = nil
+    touchControls()
+    syncPoliciesIfNeeded()
+    refreshDisplay(now: now)
   }
 
   private func controlsAreUnlocked(at date: Date) -> Bool {

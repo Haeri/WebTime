@@ -27,15 +27,19 @@ private final class AllowanceProgressView: NSView {
 
 @MainActor
 final class SiteProgressMenuView: NSView {
+  private let onSnooze: @MainActor () -> Void
   private let faviconView = FaviconTileView()
   private let nameLabel = NSTextField(labelWithString: "")
   private let detailLabel = NSTextField(labelWithString: "")
   private let stateView = NSImageView()
   private let progress = AllowanceProgressView()
+  private lazy var snoozeButton = NSButton(
+    title: "Snooze 15m", target: self, action: #selector(requestSnooze))
 
   override var allowsVibrancy: Bool { true }
 
-  init() {
+  init(onSnooze: @escaping @MainActor () -> Void) {
+    self.onSnooze = onSnooze
     super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 52))
     faviconView.frame = NSRect(x: 14, y: 16, width: 23, height: 23)
     nameLabel.frame = NSRect(x: 47, y: 29, width: 193, height: 18)
@@ -45,17 +49,24 @@ final class SiteProgressMenuView: NSView {
     detailLabel.textColor = .secondaryLabelColor
     stateView.frame = NSRect(x: 267, y: 30, width: 12, height: 12)
     stateView.imageScaling = .scaleProportionallyUpOrDown
+    snoozeButton.frame = NSRect(x: 199, y: 27, width: 82, height: 20)
+    snoozeButton.bezelStyle = .rounded
+    snoozeButton.controlSize = .mini
+    snoozeButton.font = .systemFont(ofSize: 10, weight: .medium)
+    snoozeButton.toolTip = "Allow this website for 15 minutes"
+    snoozeButton.isHidden = true
     progress.frame = NSRect(x: 47, y: 5, width: 233, height: 5)
-    [faviconView, nameLabel, detailLabel, stateView, progress].forEach(addSubview)
+    [faviconView, nameLabel, detailLabel, stateView, snoozeButton, progress].forEach(addSubview)
   }
 
   required init?(coder: NSCoder) { nil }
 
   func update(
     name: String, favicon: NSImage?, used: TimeInterval, limit: TimeInterval, active: Bool,
-    blocked: Bool
+    blocked: Bool, canSnooze: Bool, snoozeRemaining: TimeInterval
   ) {
     nameLabel.stringValue = name
+    nameLabel.frame.size.width = canSnooze ? 145 : 193
     faviconView.image =
       favicon
       ?? NSImage(
@@ -69,7 +80,10 @@ final class SiteProgressMenuView: NSView {
       remainingFraction <= 0.1
       ? .systemRed : (remainingFraction <= 0.25 ? .systemOrange : .systemBlue)
     detailLabel.stringValue =
-      "\(duration(remaining)) left · \(Int(usedFraction * 100))% used · \(duration(limit)) set"
+      snoozeRemaining > 0
+      ? "Snoozed \(duration(snoozeRemaining)) · \(Int(usedFraction * 100))% used · \(duration(limit)) set"
+      : "\(duration(remaining)) left · \(Int(usedFraction * 100))% used · \(duration(limit)) set"
+    snoozeButton.isHidden = !canSnooze
     if active && !blocked {
       stateView.image = NSImage(
         systemSymbolName: "play.fill", accessibilityDescription: "Active now")
@@ -79,6 +93,10 @@ final class SiteProgressMenuView: NSView {
       stateView.image = nil
       stateView.toolTip = blocked ? "Daily allowance exhausted" : nil
     }
+  }
+
+  @objc private func requestSnooze() {
+    onSnooze()
   }
 
   private func duration(_ seconds: TimeInterval) -> String {

@@ -94,6 +94,27 @@ expect(
   !rollover.shouldBlock(siteID: "youtube", limit: 500),
   "day rollover re-enables a website that exhausted yesterday's allowance")
 
+var snoozes = SiteSnoozeState()
+snoozes.snooze(siteID: "youtube", at: start)
+expect(snoozes.isActive(siteID: "youtube", at: start), "snooze immediately allows one website")
+expect(
+  snoozes.remaining(siteID: "youtube", at: start.addingTimeInterval(60)) == 14 * 60,
+  "snooze is a 15-minute wall-clock grant")
+expect(
+  snoozes.removeExpired(at: start.addingTimeInterval(15 * 60))
+    && !snoozes.isActive(siteID: "youtube", at: start.addingTimeInterval(15 * 60)),
+  "snooze expires without changing the daily allowance")
+var snoozedLedger = UsageLedger(
+  usage: DailyUsage(
+    day: UsageLedger.dayKey(for: start), consumedBySite: ["youtube": 60], lastSampleAt: start),
+  now: start)
+_ = snoozedLedger.tick(
+  at: start.addingTimeInterval(5), activeSiteIDs: ["youtube"], limits: ["youtube": 60],
+  allowOverLimitSiteIDs: ["youtube"])
+expect(
+  snoozedLedger.consumed(siteID: "youtube") == 65,
+  "foreground usage during a snooze remains visible in statistics")
+
 expect(SiteDomains.host("youtube.com", matchesAny: ["youtube.com"]), "exact domain matches")
 expect(
   SiteDomains.host("RR3---SN-ABC.googlevideo.com.", matchesAny: ["googlevideo.com"]),
@@ -148,18 +169,24 @@ expect(
 var usageHistory = UsageHistory(days: ["2026-08-30": ["youtube": 120]])
 let historySample = ISO8601DateFormatter().date(from: "2026-08-30T12:15:00Z")!
 usageHistory.record(
-  totals: ["youtube": 125], increments: ["youtube": 5], at: historySample, calendar: utc)
+  totals: ["youtube": 125], increments: ["youtube": 5], at: historySample,
+  limits: ["youtube": 125], calendar: utc)
 expect(
   usageHistory.hourly["2026-08-30"]?["12"]?["youtube"] == 5,
   "hourly website usage is recorded for the statistics chart")
+expect(
+  usageHistory.limitHitHourBySite["2026-08-30"]?["youtube"] == 12,
+  "the first hour a website reaches its limit is recorded for statistics")
 for day in 1...405 {
   let key = String(format: "2025-%03d", day)
   usageHistory.days[key] = ["youtube": 1]
   usageHistory.hourly[key] = ["00": ["youtube": 1]]
+  usageHistory.limitHitHourBySite[key] = ["youtube": 0]
 }
 usageHistory.trim(keepingRecentDays: 400)
 expect(
-  usageHistory.days.count == 400 && usageHistory.hourly.count <= 400,
+  usageHistory.days.count == 400 && usageHistory.hourly.count <= 400
+    && usageHistory.limitHitHourBySite.count <= 400,
   "statistics retention remains capped at 400 days")
 let policyCommand = DaemonCommand.updatePolicies([
   DaemonSitePolicy(id: "instagram", domains: ["instagram.com"], blocked: true)

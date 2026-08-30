@@ -37,10 +37,13 @@
             <a class="text-link source-link" href="https://github.com/__GITHUB_REPOSITORY__">View on GitHub <span aria-hidden="true">↗</span></a>
           </div>
           <p class="requirements">Requires macOS 13 or later · Free and open source</p>
-          <p class="hero-network-note">Install Web Time once on your Mac. DNS-level blocking works across browsers and apps, with no account, sign-in, or browser extension required.</p>
         </div>
 
         <div class="hero-visual reveal" aria-label="Web Time menu-bar controls">
+          <div class="desktop-menubar" aria-hidden="true">
+            <span class="desktop-menubar-app">Web Time</span>
+            <span class="desktop-menubar-status"><i></i><b>9:41</b></span>
+          </div>
           <div class="web-time-menu" role="img" aria-label="The Web Time menu showing remaining daily allowances for YouTube, Instagram, and Twitch">
             <div class="preview-site">
               <span class="preview-favicon" aria-hidden="true">
@@ -68,10 +71,8 @@
             </div>
             <div class="preview-site">
               <span class="preview-favicon" aria-hidden="true">
-                <svg viewBox="0 0 28 28">
-                  <path d="M4 3h21v15.2l-5.3 5.2h-5.1l-3.2 3.1v-3.1H7.2V7.2Z" fill="#9146ff"></path>
-                  <path d="M8.2 6.2h13.7v10.6l-3.8 3.7h-4.4l-2.2 2.1v-2.1H8.2Z" fill="#fff"></path>
-                  <path d="M13 9.4v6.3M17.5 9.4v6.3" stroke="#9146ff" stroke-width="2.1"></path>
+                <svg class="preview-favicon-twitch" viewBox="0 0 24 24">
+                  <path fill="#9146ff" d="M2.149 0 .537 4.119v16.836h5.731V24h3.224l3.045-3.045h4.657l6.269-6.268V0H2.149Zm19.164 13.612-3.582 3.582H12l-3.045 3.045v-3.045H4.299V2.149h17.014v11.463ZM17.731 6.269h-2.149v6.269h2.149V6.269Zm-5.731 0H9.851v6.269H12V6.269Z"></path>
                 </svg>
               </span>
               <span class="preview-site-copy"><strong>Twitch</strong><small>57m left · 5% used · 1h set</small></span>
@@ -79,7 +80,7 @@
             </div>
 
             <div class="preview-separator"></div>
-            <div class="preview-action preview-statistics"><span>Statistics...</span><kbd>⌘S</kbd></div>
+            <div class="preview-action preview-statistics"><span>Statistics</span><kbd>⌘S</kbd></div>
             <div class="preview-separator"></div>
             <div class="preview-action preview-status" aria-disabled="true">
               <svg viewBox="0 0 18 18" aria-hidden="true"><rect x="3.5" y="7.5" width="11" height="8" rx="2"></rect><path d="M6 7.5V5.7a3 3 0 0 1 6 0v1.8"></path></svg>
@@ -129,7 +130,6 @@
       </section>
 
       <section class="final-cta">
-        <img class="cta-icon reveal" src="assets/web-time.svg" alt="Web Time icon" width="144" height="144">
         <p class="eyebrow reveal">Web Time</p>
         <h2 class="reveal">Set a daily limit.<br><span class="gradient-text">Web Time enforces it.</span></h2>
         <a class="button release-link reveal" href="https://github.com/__GITHUB_REPOSITORY__/releases/latest/download/Web-Time.dmg">Download for Mac</a>
