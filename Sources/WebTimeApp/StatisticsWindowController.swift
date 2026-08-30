@@ -15,13 +15,13 @@ private struct UsageLegendItem {
 
 private let statisticsCanvasColor = NSColor(name: nil) { appearance in
   appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-    ? NSColor(srgbRed: 0.115, green: 0.115, blue: 0.12, alpha: 1)
+    ? NSColor(srgbRed: 0.125, green: 0.129, blue: 0.141, alpha: 1)
     : NSColor(srgbRed: 0.965, green: 0.965, blue: 0.97, alpha: 1)
 }
 
 private let statisticsPanelColor = NSColor(name: nil) { appearance in
   appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-    ? NSColor(srgbRed: 0.15, green: 0.15, blue: 0.155, alpha: 1)
+    ? NSColor(srgbRed: 0.158, green: 0.162, blue: 0.174, alpha: 1)
     : NSColor.white
 }
 
@@ -211,7 +211,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     self.history = history
     self.faviconLoader = faviconLoader
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 760, height: 720),
+      contentRect: NSRect(x: 0, y: 0, width: 700, height: 760),
       styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
     window.title = "Web Time Statistics"
     window.titleVisibility = .hidden
@@ -237,40 +237,40 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
 
   private func buildUI(in content: NSView) {
     let title = NSTextField(labelWithString: "App & Website Activity")
-    title.frame = NSRect(x: 28, y: 663, width: 440, height: 30)
+    title.frame = NSRect(x: 28, y: 703, width: 440, height: 30)
     title.font = .systemFont(ofSize: 22, weight: .semibold)
-    updatedLabel.frame = NSRect(x: 28, y: 643, width: 440, height: 20)
+    updatedLabel.frame = NSRect(x: 28, y: 683, width: 440, height: 20)
     updatedLabel.font = .systemFont(ofSize: 12, weight: .regular)
     updatedLabel.textColor = .secondaryLabelColor
     content.addSubview(title)
     content.addSubview(updatedLabel)
 
-    let usagePanel = panel(frame: NSRect(x: 24, y: 286, width: 712, height: 342))
+    let usagePanel = panel(frame: NSRect(x: 24, y: 306, width: 652, height: 362))
     let usageTitle = NSTextField(labelWithString: "Usage")
-    usageTitle.frame = NSRect(x: 20, y: 297, width: 140, height: 24)
+    usageTitle.frame = NSRect(x: 20, y: 317, width: 140, height: 24)
     usageTitle.font = .systemFont(ofSize: 15, weight: .semibold)
-    totalLabel.frame = NSRect(x: 20, y: 250, width: 250, height: 48)
+    totalLabel.frame = NSRect(x: 20, y: 270, width: 250, height: 48)
     totalLabel.font = .systemFont(ofSize: 38, weight: .regular)
-    dateLabel.frame = NSRect(x: 312, y: 287, width: 160, height: 24)
+    dateLabel.frame = NSRect(x: 260, y: 307, width: 150, height: 24)
     dateLabel.font = .systemFont(ofSize: 14, weight: .medium)
     dateLabel.alignment = .right
 
     configureNavigationButton(
       previousButton, symbol: "chevron.left", action: #selector(previousDay))
-    previousButton.frame = NSRect(x: 500, y: 282, width: 38, height: 32)
+    previousButton.frame = NSRect(x: 420, y: 302, width: 38, height: 32)
     todayButton.target = self
     todayButton.action = #selector(goToToday)
     todayButton.bezelStyle = .rounded
-    todayButton.frame = NSRect(x: 544, y: 282, width: 94, height: 32)
+    todayButton.frame = NSRect(x: 464, y: 302, width: 94, height: 32)
     configureNavigationButton(nextButton, symbol: "chevron.right", action: #selector(nextDay))
-    nextButton.frame = NSRect(x: 644, y: 282, width: 38, height: 32)
+    nextButton.frame = NSRect(x: 564, y: 302, width: 38, height: 32)
 
-    weeklyChart.frame = NSRect(x: 20, y: 147, width: 672, height: 94)
+    weeklyChart.frame = NSRect(x: 20, y: 157, width: 612, height: 104)
     weeklyChart.sectionTitle = "WEEK"
     weeklyChart.colorsOnlySelected = true
-    hourlyChart.frame = NSRect(x: 20, y: 57, width: 672, height: 84)
+    hourlyChart.frame = NSRect(x: 20, y: 57, width: 612, height: 94)
     hourlyChart.sectionTitle = "DAY"
-    usageLegend.frame = NSRect(x: 20, y: 7, width: 672, height: 42)
+    usageLegend.frame = NSRect(x: 20, y: 7, width: 612, height: 42)
     [
       usageTitle, totalLabel, dateLabel, previousButton, todayButton, nextButton, weeklyChart,
       hourlyChart, usageLegend,
@@ -278,16 +278,16 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     .forEach(usagePanel.addSubview)
     content.addSubview(usagePanel)
 
-    let listPanel = panel(frame: NSRect(x: 24, y: 22, width: 712, height: 244))
+    let listPanel = panel(frame: NSRect(x: 24, y: 22, width: 652, height: 264))
     let websitesTitle = NSTextField(labelWithString: "Websites")
-    websitesTitle.frame = NSRect(x: 20, y: 201, width: 180, height: 24)
+    websitesTitle.frame = NSRect(x: 20, y: 221, width: 180, height: 24)
     websitesTitle.font = .systemFont(ofSize: 15, weight: .semibold)
-    search.frame = NSRect(x: 462, y: 195, width: 230, height: 28)
+    search.frame = NSRect(x: 402, y: 215, width: 230, height: 28)
     search.placeholderString = "Search"
     search.delegate = self
 
     let columns = [
-      ("website", "Website", 350.0), ("time", "Time", 145.0), ("limit", "Daily Limit", 155.0),
+      ("website", "Website", 315.0), ("time", "Time", 130.0), ("limit", "Daily Limit", 145.0),
     ]
     for (identifier, title, width) in columns {
       let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
@@ -298,12 +298,12 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     table.delegate = self
     table.dataSource = self
     table.rowHeight = 34
-    table.frame = NSRect(x: 0, y: 0, width: 672, height: 168)
+    table.frame = NSRect(x: 0, y: 0, width: 612, height: 188)
     table.headerView = NSTableHeaderView()
     table.usesAlternatingRowBackgroundColors = true
     table.allowsEmptySelection = true
     table.allowsMultipleSelection = false
-    let scroll = NSScrollView(frame: NSRect(x: 20, y: 16, width: 672, height: 168))
+    let scroll = NSScrollView(frame: NSRect(x: 20, y: 16, width: 612, height: 188))
     scroll.documentView = table
     scroll.hasVerticalScroller = true
     scroll.autohidesScrollers = true
@@ -378,7 +378,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   }
 
   private func websiteCell(name: String, site: SiteConfiguration?, emphasized: Bool) -> NSView {
-    let view = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 34))
+    let view = NSView(frame: NSRect(x: 0, y: 0, width: 305, height: 34))
     let icon = FaviconTileView(frame: NSRect(x: 5, y: 3, width: 28, height: 28))
     if let site {
       icon.image =
@@ -390,7 +390,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
       icon.contentTintColor = .controlAccentColor
     }
     let label = NSTextField(labelWithString: name)
-    label.frame = NSRect(x: 43, y: 6, width: 287, height: 22)
+    label.frame = NSRect(x: 43, y: 6, width: 252, height: 22)
     label.font = .systemFont(ofSize: 13, weight: emphasized ? .semibold : .regular)
     view.addSubview(icon)
     view.addSubview(label)

@@ -69,7 +69,7 @@ a { color: inherit; }
 .hero-visual { position: relative; z-index: 2; min-height: 680px; display: grid; place-items: center; perspective: 1300px; }
 .ambient-ring { position: absolute; width: min(53vw, 760px); aspect-ratio: 1; border: 78px solid rgba(255, 255, 255, .68); border-radius: 50%; box-shadow: 0 50px 110px rgba(9, 32, 46, .12), inset 0 0 0 1px rgba(0,0,0,.025); transform: rotate(-12deg); }
 .ambient-ring::after { content: ""; position: absolute; inset: -78px; border: 78px solid transparent; border-top-color: rgba(38, 192, 244, .76); border-right-color: rgba(71, 226, 139, .58); border-radius: inherit; transform: rotate(44deg); filter: saturate(.85); }
-.hero-product-shot { position: relative; width: min(660px, 48vw); border-radius: 22px; box-shadow: 0 52px 90px rgba(18, 32, 43, .25); transform: rotateY(-5deg) rotateX(1deg) translateY(22px); transition: transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .5s ease; }
+.hero-product-shot { position: relative; width: min(360px, 32vw); border-radius: 18px; box-shadow: 0 52px 90px rgba(18, 32, 43, .25); transform: rotateY(-5deg) rotateX(1deg) translateY(22px); transition: transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .5s ease; }
 .hero-product-shot:hover { transform: rotateY(0) rotateX(0) translateY(8px); box-shadow: 0 38px 70px rgba(18, 32, 43, .2); }
 
 .statement { min-height: 760px; padding: 160px max(7vw, calc((100vw - 1180px) / 2)); display: flex; flex-direction: column; justify-content: center; background: #fff; }
@@ -111,7 +111,7 @@ footer > div { display: flex; gap: 22px; margin-top: 13px; } footer a { text-dec
   .hero-deck { margin-inline: auto; }
   .hero-actions { justify-content: center; }
   .hero-visual { min-height: 500px; }
-  .hero-product-shot { width: min(680px, 86vw); transform: translateY(0); }
+  .hero-product-shot { width: min(380px, 78vw); transform: translateY(0); }
   .ambient-ring { width: 82vw; border-width: 55px; }
   .ambient-ring::after { inset: -55px; border-width: 55px; }
   .privacy { grid-template-columns: 1fr; text-align: center; }

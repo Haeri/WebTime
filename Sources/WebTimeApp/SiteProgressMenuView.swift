@@ -3,12 +3,18 @@ import AppKit
 @MainActor
 private final class AllowanceProgressView: NSView {
   var fraction = 0.0 { didSet { needsDisplay = true } }
-  var color = NSColor.systemGreen { didSet { needsDisplay = true } }
+  var color = NSColor.systemBlue { didSet { needsDisplay = true } }
+
+  private let trackColor = NSColor(name: nil) { appearance in
+    appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+      ? NSColor.white.withAlphaComponent(0.2)
+      : NSColor.black.withAlphaComponent(0.11)
+  }
 
   override func draw(_ dirtyRect: NSRect) {
     super.draw(dirtyRect)
     let trackRect = bounds.insetBy(dx: 0, dy: 1)
-    NSColor.separatorColor.withAlphaComponent(0.72).setFill()
+    trackColor.setFill()
     NSBezierPath(roundedRect: trackRect, xRadius: 2, yRadius: 2).fill()
     guard fraction > 0 else { return }
     let fillRect = NSRect(
@@ -60,25 +66,18 @@ final class SiteProgressMenuView: NSView {
     let remaining = max(0, limit - used)
     progress.fraction = remainingFraction
     progress.color =
-      remainingFraction > 0.5
-      ? .systemGreen : (remainingFraction > 0.1 ? .systemYellow : .systemRed)
+      remainingFraction <= 0.1
+      ? .systemRed : (remainingFraction <= 0.25 ? .systemOrange : .systemBlue)
     detailLabel.stringValue =
       "\(duration(remaining)) left · \(Int(usedFraction * 100))% used · \(duration(limit)) set"
-    if blocked {
-      stateView.image = NSImage(
-        systemSymbolName: "lock.fill", accessibilityDescription: "Blocked")
-      stateView.contentTintColor = .systemRed
-      stateView.toolTip = "Daily allowance exhausted"
-    } else if active {
+    if active && !blocked {
       stateView.image = NSImage(
         systemSymbolName: "play.fill", accessibilityDescription: "Active now")
-      stateView.contentTintColor = .systemGreen
+      stateView.contentTintColor = .systemBlue
       stateView.toolTip = "Being counted now"
     } else {
-      stateView.image = NSImage(
-        systemSymbolName: "pause.fill", accessibilityDescription: "Inactive")
-      stateView.contentTintColor = .tertiaryLabelColor
-      stateView.toolTip = "Not being counted"
+      stateView.image = nil
+      stateView.toolTip = blocked ? "Daily allowance exhausted" : nil
     }
   }
 

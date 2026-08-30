@@ -442,11 +442,33 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 
   private func webTimeImage() -> NSImage {
-    let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
-    let image =
-      NSImage(systemSymbolName: "hourglass", accessibilityDescription: "Web Time")?
-      .withSymbolConfiguration(configuration)
-      ?? NSImage(size: NSSize(width: 18, height: 18))
+    let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+      NSColor.black.setStroke()
+      let face = NSBezierPath(ovalIn: NSRect(x: 3, y: 2.5, width: 12, height: 12))
+      face.lineWidth = 1.8
+      face.stroke()
+
+      let crown = NSBezierPath()
+      crown.move(to: NSPoint(x: 7.2, y: 16))
+      crown.line(to: NSPoint(x: 10.8, y: 16))
+      crown.move(to: NSPoint(x: 9, y: 14.5))
+      crown.line(to: NSPoint(x: 9, y: 16))
+      crown.move(to: NSPoint(x: 13.2, y: 13.2))
+      crown.line(to: NSPoint(x: 14.5, y: 14.5))
+      crown.lineWidth = 1.8
+      crown.lineCapStyle = .round
+      crown.stroke()
+
+      let hand = NSBezierPath()
+      hand.move(to: NSPoint(x: 9, y: 8.5))
+      hand.line(to: NSPoint(x: 9, y: 11.7))
+      hand.line(to: NSPoint(x: 11.3, y: 9.7))
+      hand.lineWidth = 1.65
+      hand.lineCapStyle = .round
+      hand.lineJoinStyle = .round
+      hand.stroke()
+      return true
+    }
     image.isTemplate = true
     image.accessibilityDescription = "Web Time"
     return image
@@ -455,13 +477,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private func activeSiteImage(
     favicon: NSImage?, fallbackLetter: String, remainingFraction: Double, blocked: Bool
   ) -> NSImage {
-    let quotaColor: NSColor =
-      blocked || remainingFraction <= 0.1
-      ? .systemRed : (remainingFraction <= 0.5 ? .systemYellow : .systemGreen)
+    let ringColor: NSColor = blocked || remainingFraction <= 0.1 ? .systemRed : .white
     let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
-      let iconRect = NSRect(x: 1.5, y: 2, width: 14, height: 14)
+      let iconRect = NSRect(x: 3, y: 3, width: 12, height: 12)
       NSGraphicsContext.saveGraphicsState()
-      NSBezierPath(roundedRect: iconRect, xRadius: 3.2, yRadius: 3.2).addClip()
+      NSBezierPath(roundedRect: iconRect, xRadius: 2.8, yRadius: 2.8).addClip()
       if let favicon {
         favicon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1)
       } else {
@@ -475,11 +495,13 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         text.draw(at: NSPoint(x: iconRect.midX - text.size().width / 2, y: iconRect.midY - 6))
       }
       NSGraphicsContext.restoreGraphicsState()
-      let dotRect = NSRect(x: 12.5, y: 1, width: 5, height: 5)
-      NSColor.black.withAlphaComponent(0.38).setFill()
-      NSBezierPath(ovalIn: dotRect.insetBy(dx: -1, dy: -1)).fill()
-      quotaColor.setFill()
-      NSBezierPath(ovalIn: dotRect).fill()
+      let ring = NSBezierPath(ovalIn: NSRect(x: 1, y: 1, width: 16, height: 16))
+      NSColor.black.withAlphaComponent(0.26).setStroke()
+      ring.lineWidth = 3
+      ring.stroke()
+      ringColor.setStroke()
+      ring.lineWidth = 1.6
+      ring.stroke()
       return true
     }
     image.isTemplate = false
