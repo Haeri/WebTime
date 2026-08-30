@@ -75,6 +75,7 @@ a { color: inherit; }
 .text-link span { display: inline-block; transition: transform .2s ease; }
 .text-link:hover span { transform: translate(2px, -2px); }
 .requirements { margin: 15px 0 0; color: #86868b; font-size: 12px; }
+.hero-network-note { max-width: 680px; margin: 17px auto 0; color: #6e6e73; font-size: 13px; line-height: 1.45; letter-spacing: -.01em; }
 
 .hero-visual { position: relative; z-index: 1; display: grid; place-items: center; width: min(900px, 92vw); min-height: 430px; margin-top: 54px; }
 .hero-visual::before { content: ""; position: absolute; width: min(620px, 78vw); aspect-ratio: 1; border-radius: 50%; background: conic-gradient(from 210deg, rgba(0,122,255,.30), rgba(175,82,222,.23), rgba(255,45,118,.20), rgba(255,94,0,.18), rgba(0,122,255,.30)); filter: blur(58px); opacity: .58; transform: scaleY(.56); }
