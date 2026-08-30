@@ -7,6 +7,7 @@ let package = Package(
   products: [
     .library(name: "WebTimeCore", targets: ["WebTimeCore"]),
     .executable(name: "WebTime", targets: ["WebTimeApp"]),
+    .executable(name: "WebTimeSetup", targets: ["WebTimeSetup"]),
     .executable(name: "webtimed", targets: ["WebTimeDaemon"]),
   ],
   targets: [
@@ -19,6 +20,7 @@ let package = Package(
       name: "WebTimeDaemon",
       dependencies: ["WebTimeCore"]
     ),
+    .executableTarget(name: "WebTimeSetup"),
     .executableTarget(
       name: "WebTimeSelfTest",
       dependencies: ["WebTimeCore"]

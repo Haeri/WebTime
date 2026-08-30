@@ -22,12 +22,12 @@ A native macOS menu-bar app that gives distracting websites daily limits. Web Ti
 Web Time requires macOS 13 or later.
 
 1. Download and open `Web-Time.dmg`.
-2. Run **Install Web Time**.
+2. Open **Web Time Setup** and click **Install**.
 3. Unlock the controls, add websites, and choose a daily limit for each one.
 
-Installation requires an administrator password because Web Time runs a local DNS service. Releases are ad-hoc signed, so macOS may require you to Control-click the installer and choose **Open** the first time.
+Installation requires an administrator password because Web Time runs a local DNS service. Web Time does not currently have an Apple Developer ID and is not notarized. If macOS blocks **Web Time Setup**, click **Done**, then open **System Settings → Privacy & Security**, scroll to **Security**, and click **Open Anyway**. Confirm **Open**, then run the setup again.
 
-To remove Web Time and restore the previous DNS settings, run **Uninstall Web Time** from the disk image.
+To remove Web Time and restore the previous DNS settings, open **Web Time Setup** and click **Uninstall**.
 
 ## Build from source
 

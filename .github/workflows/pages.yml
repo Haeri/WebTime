@@ -31,7 +31,6 @@ jobs:
         run: |
           mkdir _site
           cp -R docs/. _site/
-          find _site -type f \( -name '*.html' -o -name '*.js' \) -exec sed -i "s|__GITHUB_REPOSITORY__|${GITHUB_REPOSITORY}|g" {} +
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

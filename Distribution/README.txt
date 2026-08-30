@@ -1,16 +1,17 @@
 WEB TIME FOR MACOS
 
 Install
-1. Double-click “Install Web Time”.
-2. Enter the Mac administrator password when Terminal asks.
+1. Open “Web Time Setup”.
+2. Click Install and enter the Mac administrator password when macOS asks.
 3. Web Time appears in the menu bar.
 
-If macOS blocks the installer because this independent open-source build is not notarized,
-Control-click “Install Web Time”, choose Open, then confirm Open once.
+Web Time does not currently have an Apple Developer ID and is not notarized. If macOS blocks
+the setup app, click Done, open System Settings > Privacy & Security, scroll to Security, and
+click Open Anyway. Confirm Open, then return to step 2.
 
 Uninstall
-Double-click “Uninstall Web Time” from this disk image. Web Time restores the DNS settings
-captured during installation before it removes the app and its network service.
+Open “Web Time Setup” and click Uninstall. Web Time restores the DNS settings captured during
+installation before it removes the app and its network service.
 
 Requirements: macOS 13 or later.
 Source is available on the project’s GitHub page. The full MIT license is included in this disk image.

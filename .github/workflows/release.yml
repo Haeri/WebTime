@@ -33,17 +33,13 @@ jobs:
       - name: Assemble installer disk image
         run: |
           DMG_ROOT="$RUNNER_TEMP/Web Time"
-          PAYLOAD_ROOT="$DMG_ROOT/.web-time"
-          mkdir -p "$PAYLOAD_ROOT/.build/installer" "$PAYLOAD_ROOT/Resources" "$PAYLOAD_ROOT/Scripts" dist
-          ditto ".build/Web Time.app" "$PAYLOAD_ROOT/.build/Web Time.app"
-          cp ".build/installer/webtimed" "$PAYLOAD_ROOT/.build/installer/webtimed"
-          cp Resources/local.web-time.agent.plist Resources/local.web-time.daemon.plist "$PAYLOAD_ROOT/Resources/"
-          cp Scripts/install.sh Scripts/uninstall.sh "$PAYLOAD_ROOT/Scripts/"
-          cp "Distribution/Install Web Time.command" "Distribution/Uninstall Web Time.command" "Distribution/README.txt" "$DMG_ROOT/"
+          mkdir -p "$DMG_ROOT" dist
+          ditto ".build/Web Time Setup.app" "$DMG_ROOT/Web Time Setup.app"
+          cp "Distribution/README.txt" "$DMG_ROOT/"
           cp LICENSE "$DMG_ROOT/LICENSE.txt"
-          chmod +x "$DMG_ROOT/Install Web Time.command" "$DMG_ROOT/Uninstall Web Time.command"
           hdiutil create -volname "Web Time" -srcfolder "$DMG_ROOT" -ov -format UDZO dist/Web-Time.dmg
-          shasum -a 256 dist/Web-Time.dmg > dist/Web-Time.dmg.sha256
+          codesign --force --sign - dist/Web-Time.dmg
+          (cd dist && shasum -a 256 Web-Time.dmg > Web-Time.dmg.sha256)
 
       - name: Publish GitHub release
         env:
