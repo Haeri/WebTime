@@ -149,8 +149,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     history = store.load(UsageHistory.self, from: "history.json") ?? UsageHistory()
     buildMenu()
     interactionMonitor = NSEvent.addLocalMonitorForEvents(
-      matching: [.keyDown, .leftMouseDown, .rightMouseDown]) { [weak self] event in
-        Task { @MainActor in self?.touchControls() }
+      matching: [
+        .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel,
+        .leftMouseDragged, .rightMouseDragged, .otherMouseDragged,
+      ]) { [weak self] event in
+        MainActor.assumeIsolated { self?.touchControls() }
         return event
       }
     update(now: Date())

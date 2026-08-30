@@ -102,7 +102,10 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
 
   func tableViewSelectionDidChange(_ notification: Notification) { onInteraction() }
   func windowDidBecomeKey(_ notification: Notification) { onInteraction() }
-  func windowWillClose(_ notification: Notification) { onClose() }
+  func windowWillClose(_ notification: Notification) {
+    onInteraction()
+    onClose()
+  }
 
   @objc private func addSite() {
     onInteraction()
@@ -130,7 +133,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
       "Its saved usage history is retained, but network tracking and blocking stop immediately."
     alert.addButton(withTitle: "Remove")
     alert.addButton(withTitle: "Cancel")
-    guard alert.runModal() == .alertFirstButtonReturn else { return }
+    guard runModalTrackingInteraction(alert) == .alertFirstButtonReturn else { return }
     sites.remove(at: table.selectedRow)
     changed(selecting: min(table.selectedRow, sites.count - 1))
   }
@@ -166,7 +169,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
     alert.accessoryView = panel
     alert.addButton(withTitle: "Save")
     alert.addButton(withTitle: "Cancel")
-    guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+    guard runModalTrackingInteraction(alert) == .alertFirstButtonReturn else { return nil }
     let primaryDomain = SiteDomains.normalize(website.stringValue)
     let optionalDomains = extraDomains.stringValue.split(separator: ",").map {
       SiteDomains.normalize(String($0))
@@ -177,7 +180,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
       let error = NSAlert()
       error.messageText = "Check the website details"
       error.informativeText = "Enter a valid website address and 1–1440 minutes."
-      error.runModal()
+      _ = runModalTrackingInteraction(error)
       return nil
     }
     let typedName = name.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -215,6 +218,13 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
     panel.addSubview(title)
     panel.addSubview(field)
     return field
+  }
+
+  private func runModalTrackingInteraction(_ alert: NSAlert) -> NSApplication.ModalResponse {
+    onInteraction()
+    let response = alert.runModal()
+    onInteraction()
+    return response
   }
 
   private func duration(_ seconds: TimeInterval) -> String {
