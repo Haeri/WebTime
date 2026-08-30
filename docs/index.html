@@ -4,14 +4,53 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f5f5f7">
-    <meta name="description" content="Web Time applies daily website limits at the DNS level across browsers and apps. No account or browser extension required.">
-    <meta property="og:title" content="Web Time for macOS">
-    <meta property="og:description" content="Set DNS-level website limits across browsers and apps. No account or browser extension required.">
-    <meta property="og:image" content="assets/web-time-1024.png">
-    <title>Web Time: Website allowances for macOS</title>
+    <meta name="description" content="Set daily website limits across every browser and app on your Mac. Web Time works locally at the DNS level, with no account or browser extension.">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Web Time">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:title" content="Web Time for macOS: Daily Website Limits">
+    <meta property="og:description" content="Set daily website limits across every browser and app on your Mac. No account or browser extension required.">
+    <meta property="og:url" content="https://haeri.github.io/WebTime/">
+    <meta property="og:image" content="https://haeri.github.io/WebTime/assets/web-time-1024.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1024">
+    <meta property="og:image:height" content="1024">
+    <meta property="og:image:alt" content="Web Time app icon">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Web Time for macOS: Daily Website Limits">
+    <meta name="twitter:description" content="Set daily website limits across every browser and app on your Mac.">
+    <meta name="twitter:image" content="https://haeri.github.io/WebTime/assets/web-time-1024.png">
+    <meta name="twitter:image:alt" content="Web Time app icon">
+    <title>Web Time for macOS: Daily Website Limits Across Browsers</title>
+    <link rel="canonical" href="https://haeri.github.io/WebTime/">
     <link rel="icon" href="assets/web-time.svg" type="image/svg+xml" sizes="any">
+    <link rel="icon" href="assets/web-time-64.png" type="image/png" sizes="64x64">
+    <link rel="apple-touch-icon" href="assets/web-time-1024.png">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "@id": "https://haeri.github.io/WebTime/#software",
+        "name": "Web Time",
+        "description": "A native macOS menu-bar app that applies daily website limits across browsers and apps at the local DNS level.",
+        "url": "https://haeri.github.io/WebTime/",
+        "downloadUrl": "https://github.com/Haeri/WebTime/releases/latest/download/Web-Time.dmg",
+        "image": "https://haeri.github.io/WebTime/assets/web-time-1024.png",
+        "operatingSystem": "macOS 13 or later",
+        "applicationCategory": "UtilitiesApplication",
+        "isAccessibleForFree": true,
+        "license": "https://github.com/Haeri/WebTime/blob/main/LICENSE",
+        "sameAs": "https://github.com/Haeri/WebTime",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
   </head>
   <body>
     <header class="site-header" aria-label="Primary navigation">
@@ -28,7 +67,7 @@
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-copy reveal">
+        <div class="hero-copy">
           <p class="eyebrow">Web Time for macOS</p>
           <h1 id="hero-title"><span class="gradient-text">Daily website limits.</span><br>Across every browser.</h1>
           <p class="hero-deck">Web Time tracks usage locally and blocks each distracting website when its daily allowance runs out.</p>
@@ -36,11 +75,11 @@
             <a class="button release-link" href="https://github.com/Haeri/WebTime/releases/latest/download/Web-Time.dmg">Download for Mac</a>
             <a class="text-link source-link" href="https://github.com/Haeri/WebTime">View on GitHub <span aria-hidden="true">↗</span></a>
           </div>
-          <p class="requirements"><span data-latest-release-version data-repository="Haeri/WebTime">Checking version…</span> · Requires macOS 13 or later</p>
+          <p class="requirements"><span data-latest-release-version data-repository="Haeri/WebTime" aria-live="polite">Checking version…</span> · Requires macOS 13 or later</p>
           <p class="install-note">Not notarized. First launch may require <strong>System Settings → Privacy &amp; Security → Open Anyway</strong>. <a href="https://github.com/Haeri/WebTime#install">Installation steps</a></p>
         </div>
 
-        <div class="hero-visual reveal" aria-label="Web Time menu-bar controls">
+        <div class="hero-visual reveal">
           <div class="web-time-menu" role="img" aria-label="The Web Time menu showing remaining daily allowances for YouTube, Instagram, and Twitch">
             <div class="preview-site">
               <span class="preview-favicon" aria-hidden="true">
@@ -103,7 +142,19 @@
           <p>Screen Time–style daily and weekly charts show usage by website, hour, and allowance. Everything stays on your Mac.</p>
         </div>
         <figure class="real-statistics-window reveal">
-          <img src="assets/web-time-statistics.png" alt="The native Web Time statistics window with weekly and hourly charts and a website list">
+          <picture>
+            <source
+              type="image/webp"
+              srcset="assets/web-time-statistics-700.webp 700w, assets/web-time-statistics-1200.webp 1200w"
+              sizes="(max-width: 734px) calc(100vw - 32px), 780px">
+            <img
+              src="assets/web-time-statistics.png"
+              width="1400"
+              height="1576"
+              loading="lazy"
+              decoding="async"
+              alt="The native Web Time statistics window with weekly and hourly charts and a website list">
+          </picture>
           <figcaption>Captured directly from Web Time using representative sample data.</figcaption>
         </figure>
       </section>
@@ -129,7 +180,7 @@
         <p class="eyebrow reveal">Web Time</p>
         <h2 class="reveal">Set a daily limit.<br><span class="gradient-text">Web Time enforces it.</span></h2>
         <a class="button release-link reveal" href="https://github.com/Haeri/WebTime/releases/latest/download/Web-Time.dmg">Download for Mac</a>
-        <p class="requirements reveal"><span data-latest-release-version data-repository="Haeri/WebTime">Checking version…</span> · MIT licensed</p>
+        <p class="requirements reveal"><span data-latest-release-version data-repository="Haeri/WebTime" aria-live="polite">Checking version…</span> · MIT licensed</p>
       </section>
     </main>
 
