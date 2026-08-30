@@ -143,15 +143,8 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
   private func changed(selecting row: Int) {
     table.reloadData()
     if row >= 0 { table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false) }
-    onChange(sites)
     onInteraction()
-    // NSAlert uses a nested modal loop. Restore this accessory window on the following turn so
-    // rebuilding the status menu cannot leave it visible but unable to receive clicks.
-    DispatchQueue.main.async { [weak self] in
-      guard let self else { return }
-      NSApp.activate(ignoringOtherApps: true)
-      self.window?.makeKeyAndOrderFront(nil)
-    }
+    onChange(sites)
   }
 
   private func editDialog(site: SiteConfiguration?) -> SiteConfiguration? {

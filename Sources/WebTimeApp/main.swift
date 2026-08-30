@@ -41,6 +41,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var settingsController: SiteSettingsWindowController?
   private var statisticsController: StatisticsWindowController?
   private var menuRebuildScheduled = false
+  private var menuRebuildDeferredForSettings = false
   private var menuIsOpen = false
   private var menuRankingChangedWhileOpen = false
   private var displayedMenuSiteIDs: [String] = []
@@ -366,7 +367,13 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         self.refreshStatistics()
       },
       onInteraction: { [weak self] in self?.touchControls() },
-      onClose: { [weak self] in self?.settingsController = nil })
+      onClose: { [weak self] in
+        guard let self else { return }
+        self.settingsController = nil
+        guard self.menuRebuildDeferredForSettings else { return }
+        self.menuRebuildDeferredForSettings = false
+        self.scheduleMenuRebuild()
+      })
     settingsController = controller
     controller.showWindow(nil)
     controller.window?.makeKeyAndOrderFront(nil)
@@ -393,6 +400,10 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 
   private func scheduleMenuRebuild() {
+    if settingsController?.window?.isVisible == true {
+      menuRebuildDeferredForSettings = true
+      return
+    }
     if menuIsOpen {
       menuRankingChangedWhileOpen = true
       return
@@ -403,10 +414,6 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
       guard let self else { return }
       self.menuRebuildScheduled = false
       self.buildMenu()
-      if let window = self.settingsController?.window, window.isVisible {
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-      }
     }
   }
 
