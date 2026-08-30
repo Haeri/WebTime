@@ -212,14 +212,14 @@ expect(
       "1.1.1.1", protectedAddresses: ["1.1.1.1"]),
   "private and explicitly protected infrastructure addresses are never blocked")
 
-let challenge = RecoveryChallenge.generate()
-expect(challenge.split(separator: " ").count == 12, "recovery challenge contains 12 words")
+let challenge = UnlockChallenge.generate()
+expect(challenge.split(separator: " ").count == 12, "unlock challenge contains 12 words")
 expect(
-  RecoveryChallenge.matches(typed: challenge, challenge: challenge),
-  "exact one-time recovery challenge matches")
+  UnlockChallenge.matches(typed: challenge, challenge: challenge),
+  "exact one-time unlock challenge matches")
 expect(
-  !RecoveryChallenge.matches(typed: challenge + " extra", challenge: challenge),
-  "different recovery challenge is rejected")
+  !UnlockChallenge.matches(typed: challenge + " extra", challenge: challenge),
+  "different unlock challenge is rejected")
 
 let nettop = "tcp4 192.168.1.2:50123<->142.250.1.190:443,en0,Established,1500,230\n"
 expect(

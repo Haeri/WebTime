@@ -1,6 +1,6 @@
 import Foundation
 
-public enum RecoveryChallenge {
+public enum UnlockChallenge {
   private static let words = [
     "amber", "anchor", "apricot", "atlas", "badger", "bamboo", "beacon", "birch",
     "bison", "bluebird", "bramble", "bronze", "cactus", "canyon", "cedar", "cinder",

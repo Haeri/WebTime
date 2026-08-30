@@ -94,6 +94,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private static let maximumMenuSites = 5
 
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+  private let menu = NSMenu()
   private let daemon = DaemonClient()
   private let detector = NetworkActivityDetector()
   private let faviconLoader = FaviconLoader()
@@ -140,11 +141,6 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     }
     configuration =
       store.load(LimiterConfiguration.self, from: "configuration.json") ?? LimiterConfiguration()
-    configuration.sites = configuration.sites.map { site in
-      var updated = site
-      updated.domains = SiteDomains.expandedKnownDomains(site.domains)
-      return updated
-    }
     ledger = UsageLedger(usage: store.load(DailyUsage.self, from: "usage.json"))
     history = store.load(UsageHistory.self, from: "history.json") ?? UsageHistory()
     buildMenu()
@@ -188,7 +184,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 
   private func buildMenu() {
-    let menu = NSMenu()
+    menu.removeAllItems()
     menu.delegate = self
     menu.autoenablesItems = false
     statusItem.button?.imagePosition = .imageOnly
@@ -377,7 +373,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   }
 
   private func runTypingChallenge() -> Bool {
-    let challenge = RecoveryChallenge.generate()
+    let challenge = UnlockChallenge.generate()
     let alert = NSAlert()
     alert.messageText = "Unlock controls"
     alert.informativeText =
@@ -403,7 +399,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     NSApp.activate(ignoringOtherApps: true)
     alert.window.initialFirstResponder = field
     guard alert.runModal() == .alertFirstButtonReturn else { return false }
-    guard RecoveryChallenge.matches(typed: field.stringValue, challenge: challenge) else {
+    guard UnlockChallenge.matches(typed: field.stringValue, challenge: challenge) else {
       showMessage("Phrase did not match", "Controls remain locked.")
       return false
     }

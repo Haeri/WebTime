@@ -22,19 +22,11 @@ final class FaviconLoader {
       try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
       try? FileManager.default.setAttributes(
         [.posixPermissions: 0o700], ofItemAtPath: directory.path)
-      if let files = try? FileManager.default.contentsOfDirectory(
-        at: directory, includingPropertiesForKeys: nil)
-      {
-        for file in files where !file.lastPathComponent.hasPrefix("v4-") {
-          try? FileManager.default.removeItem(at: file)
-        }
-      }
     }
   }
 
   func image(for site: SiteConfiguration, onUpdate: @escaping @MainActor () -> Void) -> NSImage? {
-    // Version the key so icons fetched through the retired third-party proxy are replaced.
-    let key = "v4-" + site.id + "-" + site.primaryDomain.replacingOccurrences(of: ".", with: "_")
+    let key = site.primaryDomain.replacingOccurrences(of: ".", with: "_")
     if let image = images[key] { return image }
     let file = directory?.appendingPathComponent(key).appendingPathExtension("ico")
     if let file, let image = NSImage(contentsOf: file) {
