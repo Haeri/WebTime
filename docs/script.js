@@ -13,17 +13,3 @@ if (reduceMotion || !('IntersectionObserver' in window)) {
   }, { threshold: 0.15 });
   revealItems.forEach((item) => observer.observe(item));
 }
-
-if (!reduceMotion) {
-  const ring = document.querySelector('.ambient-ring');
-  let scheduled = false;
-  window.addEventListener('scroll', () => {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      const turn = Math.min(window.scrollY * 0.025, 18);
-      ring.style.transform = `rotate(${turn - 12}deg)`;
-      scheduled = false;
-    });
-  }, { passive: true });
-}
