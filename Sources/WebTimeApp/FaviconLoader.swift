@@ -4,8 +4,10 @@ import WebTimeCore
 
 @MainActor
 final class FaviconLoader {
+  private static let retryDelay: TimeInterval = 60
   private var images: [String: NSImage] = [:]
-  private var requested = Set<String>()
+  private var requestsInFlight = Set<String>()
+  private var retryAfter: [String: Date] = [:]
   private let directory: URL?
   private let session: URLSession
 
@@ -26,15 +28,35 @@ final class FaviconLoader {
   }
 
   func image(for site: SiteConfiguration, onUpdate: @escaping @MainActor () -> Void) -> NSImage? {
-    let key = site.primaryDomain.replacingOccurrences(of: ".", with: "_")
+    let key = cacheKey(for: site)
     if let image = images[key] { return image }
-    let file = directory?.appendingPathComponent(key).appendingPathExtension("ico")
+    let file = cacheFile(for: key)
     if let file, let image = NSImage(contentsOf: file) {
       images[key] = image
       return image
     }
-    guard !requested.contains(key), SiteDomains.isValid(site.primaryDomain) else { return nil }
-    requested.insert(key)
+    requestImage(for: site, key: key, file: file, onUpdate: onUpdate)
+    return nil
+  }
+
+  func prefetch(for site: SiteConfiguration, onUpdate: @escaping @MainActor () -> Void) {
+    let key = cacheKey(for: site)
+    if images[key] != nil { return }
+    let file = cacheFile(for: key)
+    if let file, let image = NSImage(contentsOf: file) {
+      images[key] = image
+      return
+    }
+    requestImage(for: site, key: key, file: file, onUpdate: onUpdate)
+  }
+
+  private func requestImage(
+    for site: SiteConfiguration, key: String, file: URL?,
+    onUpdate: @escaping @MainActor () -> Void
+  ) {
+    guard !requestsInFlight.contains(key), SiteDomains.isValid(site.primaryDomain) else { return }
+    if let retryDate = retryAfter[key], retryDate > Date() { return }
+    requestsInFlight.insert(key)
     Task { @MainActor [weak self] in
       guard let self else { return }
       for url in await faviconCandidates(for: site.primaryDomain) {
@@ -45,6 +67,8 @@ final class FaviconLoader {
             data.count <= 1_000_000, let image = NSImage(data: data)
           else { continue }
           images[key] = image
+          requestsInFlight.remove(key)
+          retryAfter.removeValue(forKey: key)
           if let file {
             try? data.write(to: file, options: .atomic)
             try? FileManager.default.setAttributes(
@@ -54,8 +78,17 @@ final class FaviconLoader {
           return
         } catch { continue }
       }
+      requestsInFlight.remove(key)
+      retryAfter[key] = Date().addingTimeInterval(Self.retryDelay)
     }
-    return nil
+  }
+
+  private func cacheKey(for site: SiteConfiguration) -> String {
+    site.primaryDomain.replacingOccurrences(of: ".", with: "_")
+  }
+
+  private func cacheFile(for key: String) -> URL? {
+    directory?.appendingPathComponent(key).appendingPathExtension("ico")
   }
 
   private func faviconCandidates(for domain: String) async -> [URL] {

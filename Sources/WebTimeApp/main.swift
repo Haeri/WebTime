@@ -447,17 +447,38 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   @objc private func manageWebsites() {
     guard controlsAreUnlocked(at: Date()) else { return }
     touchControls()
-    if let settingsController {
-      settingsController.showWindow(nil)
-      settingsController.window?.makeKeyAndOrderFront(nil)
+    // Present after menu tracking has ended. Ordering an accessory-app window while its status
+    // menu is still closing can leave the window behind the active application.
+    DispatchQueue.main.async { [weak self] in self?.presentWebsiteManager() }
+  }
+
+  private func presentWebsiteManager() {
+    guard controlsAreUnlocked(at: Date()) else {
+      refreshDisplay(now: Date())
       return
     }
+    touchControls()
+    NSApp.activate(ignoringOtherApps: true)
+    if let settingsController, let window = settingsController.window {
+      if window.isMiniaturized { window.deminiaturize(nil) }
+      settingsController.showWindow(nil)
+      window.orderFrontRegardless()
+      window.makeKey()
+      return
+    }
+    settingsController = nil
     let controller = SiteSettingsWindowController(
       sites: configuration.sites, consumedBySite: ledger.usage.consumedBySite,
       faviconLoader: faviconLoader,
       onChange: { [weak self] sites in
         guard let self else { return }
         self.configuration.sites = sites
+        for site in sites {
+          self.faviconLoader.prefetch(for: site) { [weak self] in
+            self?.refreshDisplay(now: Date())
+            self?.refreshStatistics()
+          }
+        }
         self.lastPolicies = nil
         self.persist()
         self.syncPoliciesIfNeeded()
@@ -474,8 +495,8 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
       })
     settingsController = controller
     controller.showWindow(nil)
-    controller.window?.makeKeyAndOrderFront(nil)
-    NSApp.activate(ignoringOtherApps: true)
+    controller.window?.orderFrontRegardless()
+    controller.window?.makeKey()
   }
 
   @objc private func showStatistics() {
@@ -550,19 +571,17 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
   private func foregroundProcessHints() -> [String] {
     guard let application = NSWorkspace.shared.frontmostApplication else { return [] }
-    var hints = [application.localizedName].compactMap { $0?.lowercased() }
-    switch application.bundleIdentifier?.lowercased() {
-    case "com.apple.safari": hints += ["safari", "webkit"]
-    case "com.google.chrome": hints += ["google chrome", "chrome"]
-    case "org.mozilla.firefox": hints += ["firefox"]
-    case "com.brave.browser": hints += ["brave browser", "brave"]
-    case "com.microsoft.edgemac": hints += ["microsoft edge", "edge"]
-    case "company.thebrowser.browser": hints += ["arc"]
-    case "com.operasoftware.opera": hints += ["opera"]
-    case "com.vivaldi.vivaldi": hints += ["vivaldi"]
-    default: break
+    let candidates = [
+      application.localizedName,
+      application.executableURL?.deletingPathExtension().lastPathComponent,
+    ]
+    var seen = Set<String>()
+    return candidates.compactMap { value in
+      guard let hint = value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+        !hint.isEmpty, seen.insert(hint).inserted
+      else { return nil }
+      return hint
     }
-    return Array(Set(hints))
   }
 
   private func webTimeImage() -> NSImage {

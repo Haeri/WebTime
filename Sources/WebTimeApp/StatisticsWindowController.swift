@@ -203,6 +203,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   private var filteredSites: [SiteConfiguration] = []
 
   private let updatedLabel = NSTextField(labelWithString: "")
+  private let versionLabel = NSTextField(labelWithString: "")
   private let totalLabel = NSTextField(labelWithString: "0m")
   private let dateLabel = NSTextField(labelWithString: "Today")
   private let previousButton = NSButton()
@@ -260,8 +261,14 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     updatedLabel.frame = NSRect(x: 28, y: 683, width: 440, height: 20)
     updatedLabel.font = .systemFont(ofSize: 12, weight: .regular)
     updatedLabel.textColor = .secondaryLabelColor
+    versionLabel.frame = NSRect(x: 492, y: 685, width: 180, height: 18)
+    versionLabel.font = .systemFont(ofSize: 10.5, weight: .regular)
+    versionLabel.textColor = .tertiaryLabelColor
+    versionLabel.alignment = .right
+    versionLabel.stringValue = appVersionDescription
     content.addSubview(title)
     content.addSubview(updatedLabel)
+    content.addSubview(versionLabel)
 
     let usagePanel = panel(frame: NSRect(x: 24, y: 306, width: 652, height: 362))
     let usageTitle = NSTextField(labelWithString: "Usage")
@@ -532,5 +539,14 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
       return remainder == 0 ? "\(minutes / 60)h" : "\(minutes / 60)h \(remainder)m"
     }
     return "\(minutes)m"
+  }
+
+  private var appVersionDescription: String {
+    guard
+      let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
+        as? String,
+      !version.isEmpty
+    else { return "Development build" }
+    return "Version \(version)"
   }
 }

@@ -11,7 +11,7 @@ A native macOS menu-bar app that gives distracting websites daily limits. Web Ti
 ## Features
 
 - Separate daily limits for each website
-- Works across Safari, Chrome, Firefox, other browsers, and native apps
+- Works across browsers and native apps
 - Menu-bar progress and Screen Time-style usage statistics
 - Automatically blocks exhausted websites, with an unlocked 15-minute snooze
 - Typing challenge protects settings and quitting from impulsive changes
@@ -55,9 +55,6 @@ Settings and usage history stay in:
 
 Web Time does not collect browsing history or send usage data anywhere. See [PRIVACY.md](PRIVACY.md) for details.
 
-## Limitations
-
-Web Time is a personal friction tool, not parental-control or security software. An administrator can disable it, and VPNs, proxies, or encrypted DNS tools may bypass local DNS blocking. Network-based tracking also cannot identify the exact foreground tab when several tabs in the same browser are active.
 
 ## License
 

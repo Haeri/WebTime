@@ -50,97 +50,102 @@ controls.lock()
 expect(!controls.isUnlocked(at: start), "manual lock immediately closes controls")
 
 var ledger = UsageLedger(now: start)
-let limits: [String: TimeInterval] = ["youtube": 100, "instagram": 50]
+let limits: [String: TimeInterval] = ["site-a": 100, "site-b": 50]
 expect(
-  ledger.tick(at: start, activeSiteIDs: ["youtube"], limits: limits).isEmpty,
+  ledger.tick(at: start, activeSiteIDs: ["site-a"], limits: limits).isEmpty,
   "first timer sample establishes a baseline"
 )
 expect(
   ledger.tick(at: start.addingTimeInterval(5), activeSiteIDs: [], limits: limits).isEmpty,
   "idle time is not counted")
 expect(
-  ledger.tick(at: start.addingTimeInterval(15), activeSiteIDs: ["youtube"], limits: limits)[
-    "youtube"] == 10,
+  ledger.tick(at: start.addingTimeInterval(15), activeSiteIDs: ["site-a"], limits: limits)[
+    "site-a"] == 10,
   "active elapsed time is counted")
 expect(
   ledger.tick(
-    at: start.addingTimeInterval(100), activeSiteIDs: ["youtube", "instagram"], limits: limits)[
-      "instagram"] == 30,
+    at: start.addingTimeInterval(100), activeSiteIDs: ["site-a", "site-b"], limits: limits)[
+      "site-b"] == 30,
   "sleep or stalled samples are capped at 30 seconds")
 expect(
-  ledger.consumed(siteID: "youtube") == 40 && ledger.consumed(siteID: "instagram") == 30,
+  ledger.consumed(siteID: "site-a") == 40 && ledger.consumed(siteID: "site-b") == 30,
   "simultaneously active websites have independent counters")
 
 var capped = UsageLedger(
   usage: DailyUsage(
-    day: UsageLedger.dayKey(for: start), consumedBySite: ["youtube": 60, "instagram": 20]),
+    day: UsageLedger.dayKey(for: start), consumedBySite: ["site-a": 60, "site-b": 20]),
   now: start)
-expect(capped.shouldBlock(siteID: "youtube", limit: 60), "one website reaching its limit blocks")
+expect(capped.shouldBlock(siteID: "site-a", limit: 60), "one website reaching its limit blocks")
 expect(
-  !capped.shouldBlock(siteID: "instagram", limit: 60),
+  !capped.shouldBlock(siteID: "site-b", limit: 60),
   "another website retains its independent allowance")
 
 var utc = Calendar(identifier: .gregorian)
 utc.timeZone = TimeZone(secondsFromGMT: 0)!
 let midnight = ISO8601DateFormatter().date(from: "2026-08-30T23:59:50Z")!
 var rollover = UsageLedger(
-  usage: DailyUsage(day: "2026-08-30", consumedBySite: ["youtube": 500]), now: midnight,
+  usage: DailyUsage(day: "2026-08-30", consumedBySite: ["site-a": 500]), now: midnight,
   calendar: utc)
 rollover.resetIfNeeded(at: midnight.addingTimeInterval(20))
 expect(
   rollover.usage.day == "2026-08-31" && rollover.usage.consumedBySite.isEmpty,
   "usage resets at local calendar-day rollover")
 expect(
-  !rollover.shouldBlock(siteID: "youtube", limit: 500),
+  !rollover.shouldBlock(siteID: "site-a", limit: 500),
   "day rollover re-enables a website that exhausted yesterday's allowance")
 
 var snoozes = SiteSnoozeState()
-snoozes.snooze(siteID: "youtube", at: start)
-expect(snoozes.isActive(siteID: "youtube", at: start), "snooze immediately allows one website")
+snoozes.snooze(siteID: "site-a", at: start)
+expect(snoozes.isActive(siteID: "site-a", at: start), "snooze immediately allows one website")
 expect(
-  snoozes.remaining(siteID: "youtube", at: start.addingTimeInterval(60)) == 14 * 60,
+  snoozes.remaining(siteID: "site-a", at: start.addingTimeInterval(60)) == 14 * 60,
   "snooze is a 15-minute wall-clock grant")
 expect(
   snoozes.removeExpired(at: start.addingTimeInterval(15 * 60))
-    && !snoozes.isActive(siteID: "youtube", at: start.addingTimeInterval(15 * 60)),
+    && !snoozes.isActive(siteID: "site-a", at: start.addingTimeInterval(15 * 60)),
   "snooze expires without changing the daily allowance")
 var snoozedLedger = UsageLedger(
   usage: DailyUsage(
-    day: UsageLedger.dayKey(for: start), consumedBySite: ["youtube": 60], lastSampleAt: start),
+    day: UsageLedger.dayKey(for: start), consumedBySite: ["site-a": 60], lastSampleAt: start),
   now: start)
 _ = snoozedLedger.tick(
-  at: start.addingTimeInterval(5), activeSiteIDs: ["youtube"], limits: ["youtube": 60],
-  allowOverLimitSiteIDs: ["youtube"])
+  at: start.addingTimeInterval(5), activeSiteIDs: ["site-a"], limits: ["site-a": 60],
+  allowOverLimitSiteIDs: ["site-a"])
 expect(
-  snoozedLedger.consumed(siteID: "youtube") == 65,
+  snoozedLedger.consumed(siteID: "site-a") == 65,
   "foreground usage during a snooze remains visible in statistics")
 
-expect(SiteDomains.host("youtube.com", matchesAny: ["youtube.com"]), "exact domain matches")
+expect(SiteDomains.host("example.com", matchesAny: ["example.com"]), "exact domain matches")
 expect(
-  SiteDomains.host("RR3---SN-ABC.googlevideo.com.", matchesAny: ["googlevideo.com"]),
-  "nested CDN domain matches case-insensitively")
+  SiteDomains.host("MEDIA.Example.com.", matchesAny: ["example.com"]),
+  "subdomain matches case-insensitively")
 expect(
-  !SiteDomains.host("notyoutube.com", matchesAny: ["youtube.com"]),
+  !SiteDomains.host("notexample.com", matchesAny: ["example.com"]),
   "lookalike domain does not match")
 expect(
-  !SiteDomains.host("youtube.com.example.org", matchesAny: ["youtube.com"]),
+  !SiteDomains.host("example.com.example.org", matchesAny: ["example.com"]),
   "suffix boundary is enforced")
 expect(
-  SiteDomains.normalize("https://WWW.Instagram.com/") == "www.instagram.com",
-  "website URLs normalize to hostnames")
+  SiteDomains.normalize("https://WWW.Example.com/") == "example.com",
+  "website URLs normalize to their base hostname")
 expect(
-  SiteDomains.expandedKnownDomains(["instagram.com"]).contains("cdninstagram.com"),
-  "known media domains are added automatically")
+  SiteDomains.normalizedUnique([
+    "https://www.example.com/", "example.com", "media.example.net",
+  ]) == ["example.com", "media.example.net"],
+  "only explicit domains are normalized and deduplicated")
 
+let sampleSite = SiteConfiguration(
+  id: "site-a", name: "Example", domains: ["example.com"], dailyLimitSeconds: 3_600)
 let configuration = LimiterConfiguration(
-  sites: [.youtube], idleGraceSeconds: 20, controlsInactivitySeconds: 300)
+  sites: [sampleSite], idleGraceSeconds: 20, controlsInactivitySeconds: 300)
 let roundTrippedConfiguration = try! JSONDecoder().decode(
   LimiterConfiguration.self, from: JSONEncoder().encode(configuration))
 expect(
   roundTrippedConfiguration == configuration,
   "website configuration survives persistence round-trip")
+expect(LimiterConfiguration().sites.isEmpty, "new configurations contain no preprogrammed websites")
 let usage = DailyUsage(
-  day: "2026-08-30", consumedBySite: ["youtube": 123], lastSampleAt: start)
+  day: "2026-08-30", consumedBySite: ["site-a": 123], lastSampleAt: start)
 let roundTrippedUsage = try! JSONDecoder().decode(
   DailyUsage.self, from: JSONEncoder().encode(usage))
 expect(roundTrippedUsage == usage, "per-site usage survives persistence round-trip")
@@ -166,22 +171,22 @@ expect(
   tieRank.map(\.id) == ["site-1", "site-2", "site-3"],
   "equal website usage preserves configured order")
 
-var usageHistory = UsageHistory(days: ["2026-08-30": ["youtube": 120]])
+var usageHistory = UsageHistory(days: ["2026-08-30": ["site-a": 120]])
 let historySample = ISO8601DateFormatter().date(from: "2026-08-30T12:15:00Z")!
 usageHistory.record(
-  totals: ["youtube": 125], increments: ["youtube": 5], at: historySample,
-  limits: ["youtube": 125], calendar: utc)
+  totals: ["site-a": 125], increments: ["site-a": 5], at: historySample,
+  limits: ["site-a": 125], calendar: utc)
 expect(
-  usageHistory.hourly["2026-08-30"]?["12"]?["youtube"] == 5,
+  usageHistory.hourly["2026-08-30"]?["12"]?["site-a"] == 5,
   "hourly website usage is recorded for the statistics chart")
 expect(
-  usageHistory.limitHitHourBySite["2026-08-30"]?["youtube"] == 12,
+  usageHistory.limitHitHourBySite["2026-08-30"]?["site-a"] == 12,
   "the first hour a website reaches its limit is recorded for statistics")
 for day in 1...405 {
   let key = String(format: "2025-%03d", day)
-  usageHistory.days[key] = ["youtube": 1]
-  usageHistory.hourly[key] = ["00": ["youtube": 1]]
-  usageHistory.limitHitHourBySite[key] = ["youtube": 0]
+  usageHistory.days[key] = ["site-a": 1]
+  usageHistory.hourly[key] = ["00": ["site-a": 1]]
+  usageHistory.limitHitHourBySite[key] = ["site-a": 0]
 }
 usageHistory.trim(keepingRecentDays: 400)
 expect(
@@ -189,13 +194,13 @@ expect(
     && usageHistory.limitHitHourBySite.count <= 400,
   "statistics retention remains capped at 400 days")
 let policyCommand = DaemonCommand.updatePolicies([
-  DaemonSitePolicy(id: "instagram", domains: ["instagram.com"], blocked: true)
+  DaemonSitePolicy(id: "site-b", domains: ["example.net"], blocked: true)
 ])
 let decodedCommand = try! JSONDecoder().decode(
   DaemonCommand.self, from: JSONEncoder().encode(policyCommand))
 if case .updatePolicies(let policies) = decodedCommand {
   expect(
-    policies.first?.id == "instagram" && policies.first?.blocked == true,
+    policies.first?.id == "site-b" && policies.first?.blocked == true,
     "per-site daemon policies round-trip")
 } else {
   expect(false, "per-site daemon policies round-trip")
@@ -207,7 +212,7 @@ expect(
   ]) != nil,
   "duplicate daemon policy identifiers are rejected")
 
-let query = dnsQuery(name: "www.youtube.com")
+let query = dnsQuery(name: "www.example.com")
 expect(DNSMessage.isStandardQuery(query), "ordinary single-question DNS queries are accepted")
 var responseAsQuery = query
 responseAsQuery[2] |= 0x80
@@ -217,7 +222,7 @@ compressedQuery.replaceSubrange(12..<16, with: [0xC0, 0x0C])
 expect(
   !DNSMessage.isStandardQuery(compressedQuery),
   "compressed or self-referential query names are rejected at ingress")
-expect(DNSMessage.questionName(in: query) == "www.youtube.com", "DNS question name parses")
+expect(DNSMessage.questionName(in: query) == "www.example.com", "DNS question name parses")
 let denied = DNSMessage.nxdomainResponse(for: query)!
 expect(
   denied[0] == query[0] && denied[1] == query[1] && denied[2] & 0x80 == 0x80
@@ -226,15 +231,15 @@ expect(DNSMessage.isResponse(denied, to: query), "matching DNS responses are acc
 var unrelated = denied
 unrelated[1] ^= 0x01
 expect(!DNSMessage.isResponse(unrelated, to: query), "unrelated DNS responses are rejected")
-var answer = dnsQuery(name: "youtube.com")
+var answer = dnsQuery(name: "example.com")
 answer[2] = 0x81
 answer[3] = 0x80
 answer[6] = 0
 answer[7] = 1
-answer.append(contentsOf: [0xC0, 0x0C, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 142, 250, 1, 190])
-expect(DNSMessage.addresses(in: answer) == ["142.250.1.190"], "DNS IPv4 answer parses")
+answer.append(contentsOf: [0xC0, 0x0C, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 93, 184, 216, 34])
+expect(DNSMessage.addresses(in: answer) == ["93.184.216.34"], "DNS IPv4 answer parses")
 expect(
-  NetworkAddressPolicy.isSafeToBlock("142.250.1.190"),
+  NetworkAddressPolicy.isSafeToBlock("93.184.216.34"),
   "public delivery addresses are eligible for site blocking")
 expect(
   !NetworkAddressPolicy.isSafeToBlock("192.168.1.1")
@@ -251,56 +256,51 @@ expect(
   !UnlockChallenge.matches(typed: challenge + " extra", challenge: challenge),
   "different unlock challenge is rejected")
 
-let nettop = "tcp4 192.168.1.2:50123<->142.250.1.190:443,en0,Established,1500,230\n"
+let nettop = "tcp4 192.168.1.2:50123<->93.184.216.34:443,en0,Established,1500,230\n"
 expect(
-  NetworkActivityDetector.parseNettop(nettop, matching: ["142.250.1.190"])["142.250.1.190"] == 1730,
+  NetworkActivityDetector.parseNettop(nettop, matching: ["93.184.216.34"])["93.184.216.34"] == 1730,
   "nettop byte counters parse")
 expect(
   NetworkActivityDetector.parseNettop(
-    nettop, matchingBySite: ["youtube": ["142.250.1.190"], "instagram": ["31.13.70.1"]])[
-      "youtube"] == 1730,
+    nettop, matchingBySite: ["site-a": ["93.184.216.34"], "site-b": ["104.16.0.1"]])[
+      "site-a"] == 1730,
   "network byte counters are attributed per website")
 
 let processNettop = """
-  Google Chrome.998,,
-  tcp4 192.168.1.2:50123<->142.250.1.190:443,en0,Established,1500,230
-  Safari.402,,
-  tcp4 192.168.1.2:50124<->31.13.70.1:443,en0,Established,900,100
+  Browser One.998,,
+  tcp4 192.168.1.2:50123<->93.184.216.34:443,en0,Established,1500,230
+  Browser Two.402,,
+  tcp4 192.168.1.2:50124<->104.16.0.1:443,en0,Established,900,100
   """
 let processSnapshot = NetworkActivityDetector.parseNettopSnapshot(
   processNettop,
-  matchingBySite: ["youtube": ["142.250.1.190"], "instagram": ["31.13.70.1"]])
+  matchingBySite: ["site-a": ["93.184.216.34"], "site-b": ["104.16.0.1"]])
 expect(
-  processSnapshot.processNamesBySite["youtube"] == ["Google Chrome"],
+  processSnapshot.processNamesBySite["site-a"] == ["Browser One"],
   "nettop ownership is attributed to the browser process")
 expect(
   NetworkActivityDetector.matchesForeground(
-    processSnapshot.processNamesBySite["youtube"], hints: ["chrome"]),
+    processSnapshot.processNamesBySite["site-a"], hints: ["browser one"]),
   "foreground browser traffic is eligible for counting")
 expect(
   !NetworkActivityDetector.matchesForeground(
-    processSnapshot.processNamesBySite["youtube"], hints: ["Safari"]),
+    processSnapshot.processNamesBySite["site-a"], hints: ["browser two"]),
   "background browser traffic is ignored")
 expect(
   NetworkActivityDetector.selectSingleSite(
-    trafficDeltas: ["youtube": 50_000, "instagram": 2_000], newlyActive: ["instagram"],
-    current: "youtube", eligible: ["youtube", "instagram"],
-    lastTrafficAtBySite: ["youtube": Date(), "instagram": Date()]) == "instagram",
+    trafficDeltas: ["site-a": 50_000, "site-b": 2_000], newlyActive: ["site-b"],
+    current: "site-a", eligible: ["site-a", "site-b"],
+    lastTrafficAtBySite: ["site-a": Date(), "site-b": Date()]) == "site-b",
   "a newly active website becomes the one usage bucket even beside background traffic")
 expect(
   NetworkActivityDetector.selectSingleSite(
-    trafficDeltas: [:], newlyActive: [], current: "instagram",
-    eligible: ["youtube", "instagram"], lastTrafficAtBySite: [:]) == "instagram",
+    trafficDeltas: [:], newlyActive: [], current: "site-b",
+    eligible: ["site-a", "site-b"], lastTrafficAtBySite: [:]) == "site-b",
   "one current usage bucket is retained during the warm buffer")
 
-let instagramDomains = SiteDomains.expandedKnownDomains(["instagram.com"])
-expect(instagramDomains.first == "instagram.com", "primary website remains first for its favicon")
 expect(
-  instagramDomains.contains("cdninstagram.com") && instagramDomains.contains("fbcdn.net"),
-  "known Instagram delivery domains are filled in")
-expect(
-  SiteDomains.suggestedName(for: "www.instagram.com") == "Instagram",
-  "known website name is suggested automatically")
+  SiteDomains.fallbackName(for: "www.example.com") == "Example",
+  "website names are derived generically from the entered domain")
 
 if failures > 0 {
   FileHandle.standardError.write(Data("\n\(failures) self-test(s) failed.\n".utf8))

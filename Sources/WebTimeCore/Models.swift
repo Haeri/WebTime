@@ -15,17 +15,6 @@ public struct SiteConfiguration: Codable, Equatable, Identifiable, Sendable {
     self.dailyLimitSeconds = dailyLimitSeconds
   }
 
-  public static let youtube = SiteConfiguration(
-    id: "youtube",
-    name: "YouTube",
-    domains: [
-      "youtube.com", "youtu.be", "youtube-nocookie.com", "googlevideo.com", "ytimg.com",
-      "youtubei.googleapis.com", "youtube.googleapis.com",
-      "youtubeembeddedplayer.googleapis.com",
-    ],
-    dailyLimitSeconds: 2 * 60 * 60
-  )
-
   public var primaryDomain: String { domains.first ?? "" }
 }
 
@@ -35,7 +24,7 @@ public struct LimiterConfiguration: Codable, Equatable, Sendable {
   public var controlsInactivitySeconds: TimeInterval
 
   public init(
-    sites: [SiteConfiguration] = [.youtube],
+    sites: [SiteConfiguration] = [],
     idleGraceSeconds: TimeInterval = 30,
     controlsInactivitySeconds: TimeInterval = 5 * 60
   ) {

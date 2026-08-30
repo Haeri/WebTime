@@ -40,7 +40,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
   private func buildUI(in content: NSView) {
     let intro = NSTextField(
       wrappingLabelWithString:
-        "Enter a website and its daily allowance. Web Time fills in known media domains and learns current IP addresses automatically."
+        "Enter a website and its daily allowance. Web Time tracks that domain and its subdomains, and learns current IP addresses automatically."
     )
     intro.frame = NSRect(x: 20, y: 342, width: 640, height: 34)
     content.addSubview(intro)
@@ -111,6 +111,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
     onInteraction()
     guard let site = editDialog(site: nil) else { return }
     sites.append(site)
+    faviconLoader.prefetch(for: site) { [weak self] in self?.table.reloadData() }
     changed(selecting: sites.count - 1)
   }
 
@@ -120,6 +121,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
       let edited = editDialog(site: sites[table.selectedRow])
     else { return }
     sites[table.selectedRow] = edited
+    faviconLoader.prefetch(for: edited) { [weak self] in self?.table.reloadData() }
     changed(selecting: table.selectedRow)
   }
 
@@ -154,7 +156,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
     let alert = NSAlert()
     alert.messageText = site == nil ? "Add a tracked website" : "Edit tracked website"
     alert.informativeText =
-      "Paste a website address. Subdomains, known media services, and changing IP addresses are handled automatically."
+      "Paste a website address. Add any separate domains that should share its allowance under Extra domains."
     let panel = NSView(frame: NSRect(x: 0, y: 0, width: 470, height: 148))
     let name = labeledField("Name (optional)", value: site?.name ?? "", y: 114, in: panel)
     let website = labeledField("Website or URL", value: site?.primaryDomain ?? "", y: 78, in: panel)
@@ -162,7 +164,7 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
       "Extra domains",
       value: site.map { Array($0.domains.dropFirst()).joined(separator: ", ") } ?? "",
       y: 42, in: panel)
-    extraDomains.placeholderString = "Optional advanced setting"
+    extraDomains.placeholderString = "Optional, separated by commas"
     let minutes = labeledField(
       "Minutes/day", value: site.map { String(Int($0.dailyLimitSeconds / 60)) } ?? "60", y: 6,
       in: panel)
@@ -173,23 +175,22 @@ final class SiteSettingsWindowController: NSWindowController, NSTableViewDataSou
     let primaryDomain = SiteDomains.normalize(website.stringValue)
     let optionalDomains = extraDomains.stringValue.split(separator: ",").map {
       SiteDomains.normalize(String($0))
-    }.filter(SiteDomains.isValid)
+    }
     guard SiteDomains.isValid(primaryDomain), let minuteCount = Int(minutes.stringValue),
-      (1...1440).contains(minuteCount)
+      (1...1440).contains(minuteCount), optionalDomains.allSatisfy(SiteDomains.isValid)
     else {
       let error = NSAlert()
       error.messageText = "Check the website details"
-      error.informativeText = "Enter a valid website address and 1–1440 minutes."
+      error.informativeText =
+        "Enter valid website addresses, separate extra domains with commas, and use 1–1440 minutes."
       _ = runModalTrackingInteraction(error)
       return nil
     }
     let typedName = name.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
     return SiteConfiguration(
       id: site?.id ?? UUID().uuidString,
-      name: typedName.isEmpty
-        ? (SiteDomains.suggestedName(for: primaryDomain)
-          ?? SiteDomains.fallbackName(for: primaryDomain)) : typedName,
-      domains: SiteDomains.expandedKnownDomains([primaryDomain] + optionalDomains),
+      name: typedName.isEmpty ? SiteDomains.fallbackName(for: primaryDomain) : typedName,
+      domains: SiteDomains.normalizedUnique([primaryDomain] + optionalDomains),
       dailyLimitSeconds: TimeInterval(minuteCount * 60))
   }
 
