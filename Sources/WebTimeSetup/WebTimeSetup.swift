@@ -44,7 +44,10 @@ private final class SetupDelegate: NSObject, NSApplicationDelegate {
     DispatchQueue.main.async { [weak self] in self?.presentSetupChoice() }
   }
 
-  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+  // This app only presents modal alerts, so closing an alert must not be interpreted as
+  // closing the setup app's last window. The setup flow terminates explicitly after it
+  // finishes, fails, or is canceled.
+  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
   private func presentSetupChoice() {
     let alert = NSAlert()
@@ -56,10 +59,13 @@ private final class SetupDelegate: NSObject, NSApplicationDelegate {
     alert.addButton(withTitle: "Uninstall…")
     alert.addButton(withTitle: "Cancel")
 
-    switch alert.runModal() {
-    case .alertFirstButtonReturn: perform(.install)
-    case .alertSecondButtonReturn: confirmUninstall()
-    default: NSApp.terminate(nil)
+    let response = alert.runModal()
+    DispatchQueue.main.async { [weak self] in
+      switch response {
+      case .alertFirstButtonReturn: self?.perform(.install)
+      case .alertSecondButtonReturn: self?.confirmUninstall()
+      default: NSApp.terminate(nil)
+      }
     }
   }
 
@@ -71,10 +77,13 @@ private final class SetupDelegate: NSObject, NSApplicationDelegate {
     alert.alertStyle = .warning
     alert.addButton(withTitle: "Uninstall")
     alert.addButton(withTitle: "Cancel")
-    if alert.runModal() == .alertFirstButtonReturn {
-      perform(.uninstall)
-    } else {
-      NSApp.terminate(nil)
+    let response = alert.runModal()
+    DispatchQueue.main.async { [weak self] in
+      if response == .alertFirstButtonReturn {
+        self?.perform(.uninstall)
+      } else {
+        NSApp.terminate(nil)
+      }
     }
   }
 
@@ -138,16 +147,14 @@ private final class SetupDelegate: NSObject, NSApplicationDelegate {
       "/bin/bash", shellQuote(script.path), action.rawValue, shellQuote(archive.path), expectedHash,
     ].joined(separator: " ")
     let source = "do shell script \(appleScriptLiteral(command)) with administrator privileges"
-    guard let appleScript = NSAppleScript(source: source) else {
-      throw SetupFailure(message: "The administrator request could not be created.")
-    }
-    var details: NSDictionary?
-    _ = appleScript.executeAndReturnError(&details)
-    if let details {
-      let number = details[NSAppleScript.errorNumber] as? Int
-      if number == -128 { throw SetupFailure(message: "User canceled.") }
-      let message = details[NSAppleScript.errorMessage] as? String
-      throw SetupFailure(message: message ?? "The administrator action failed.")
+    let result = run("/usr/bin/osascript", arguments: ["-e", source])
+    guard result.status == 0 else {
+      let message = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+      if message.localizedCaseInsensitiveContains("user canceled") || message.contains("(-128)") {
+        throw SetupFailure(message: "User canceled.")
+      }
+      throw SetupFailure(
+        message: message.isEmpty ? "The administrator action failed." : message)
     }
   }
 
