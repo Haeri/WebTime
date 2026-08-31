@@ -174,7 +174,9 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   private var history: UsageHistory
   private let faviconLoader: FaviconLoader
   private var selectedDate = Calendar.current.startOfDay(for: Date())
+  private var selectedSiteID: String?
   private var filteredSites: [SiteConfiguration] = []
+  private var isRestoringTableSelection = false
 
   private let updatedLabel = NSTextField(labelWithString: "")
   private let versionLabel = NSTextField(labelWithString: "")
@@ -188,6 +190,22 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   private let usageLegend = UsageLegendView()
   private let table = NSTableView()
   private let search = NSSearchField()
+  private let allWebsitesIcon: NSImage = {
+    let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+      NSColor.systemBlue.setFill()
+      for bar in [
+        NSRect(x: 1, y: 2, width: 4, height: 7),
+        NSRect(x: 7, y: 2, width: 4, height: 11),
+        NSRect(x: 13, y: 2, width: 4, height: 15),
+      ] {
+        NSBezierPath(roundedRect: bar, xRadius: 1.25, yRadius: 1.25).fill()
+      }
+      return true
+    }
+    image.isTemplate = false
+    image.accessibilityDescription = "All websites"
+    return image
+  }()
   private let palette: [NSColor] = [
     .systemBlue, .systemTeal, .systemOrange, .systemPurple, .systemPink, .systemIndigo,
     .systemGreen,
@@ -212,6 +230,9 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
   func update(sites: [SiteConfiguration], history: UsageHistory) {
     self.sites = sites
     self.history = history
+    if let selectedSiteID, !sites.contains(where: { $0.id == selectedSiteID }) {
+      self.selectedSiteID = nil
+    }
     refresh()
   }
 
@@ -287,7 +308,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     table.frame = NSRect(x: 0, y: 0, width: 612, height: 188)
     table.headerView = NSTableHeaderView()
     table.usesAlternatingRowBackgroundColors = true
-    table.allowsEmptySelection = true
+    table.allowsEmptySelection = false
     table.allowsMultipleSelection = false
     let scroll = NSScrollView(frame: NSRect(x: 20, y: 16, width: 612, height: 188))
     scroll.documentView = table
@@ -339,6 +360,14 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
 
   func controlTextDidChange(_ obj: Notification) { refreshTable() }
 
+  func tableViewSelectionDidChange(_ notification: Notification) {
+    guard !isRestoringTableSelection else { return }
+    let row = table.selectedRow
+    selectedSiteID = row > 0 && filteredSites.indices.contains(row - 1)
+      ? filteredSites[row - 1].id : nil
+    refreshUsage()
+  }
+
   func numberOfRows(in tableView: NSTableView) -> Int { filteredSites.count + 1 }
 
   func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView?
@@ -376,12 +405,10 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     let icon = FaviconTileView(frame: NSRect(x: 5, y: 3, width: 28, height: 28))
     if let site {
       icon.image =
-        faviconLoader.image(for: site) { [weak self] in self?.table.reloadData() }
+        faviconLoader.image(for: site) { [weak self] in self?.refreshTable() }
         ?? NSImage(systemSymbolName: "globe", accessibilityDescription: site.name)
     } else {
-      icon.image = NSImage(
-        systemSymbolName: "chart.bar.fill", accessibilityDescription: "All websites")
-      icon.contentTintColor = .controlAccentColor
+      icon.image = allWebsitesIcon
     }
     let label = NSTextField(labelWithString: name)
     label.frame = NSRect(x: 43, y: 6, width: 252, height: 22)
@@ -412,10 +439,19 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     nextButton.isEnabled = selectedDate < today
     todayButton.isEnabled = selectedDate != today
 
+    refreshUsage()
+    refreshTable()
+  }
+
+  private func refreshUsage() {
     let totals = history.days[dayKey(selectedDate), default: [:]]
-    totalLabel.stringValue = DurationText.compact(totals.values.reduce(0, +))
-    let orderedSites = sites
-    let colors = orderedSites.indices.map { palette[$0 % palette.count] }
+    let selectedSite = selectedSiteID.flatMap { id in sites.first { $0.id == id } }
+    let orderedSites = selectedSite.map { [$0] } ?? sites
+    totalLabel.stringValue = DurationText.compact(
+      selectedSite.map { totals[$0.id, default: 0] } ?? totals.values.reduce(0, +))
+    let colors = orderedSites.map { site in
+      palette[(sites.firstIndex { $0.id == site.id } ?? 0) % palette.count]
+    }
     weeklyChart.colors = colors
     hourlyChart.colors = colors
 
@@ -442,7 +478,7 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     }.map { index, site in
       UsageLegendItem(
         name: site.name, duration: DurationText.compact(totals[site.id, default: 0]),
-        color: palette[index % palette.count],
+        color: colors[index],
         limitReached: history.limitHitHourBySite[dayKey(selectedDate)]?[site.id] != nil)
     }
 
@@ -456,7 +492,6 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
         limitHitSiteIndices: orderedSites.indices.filter { hits[orderedSites[$0].id] == hour })
     }
     hourlyChart.selectedIndex = nil
-    refreshTable()
   }
 
   private func refreshTable() {
@@ -466,10 +501,19 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
       query.isEmpty || site.name.localizedCaseInsensitiveContains(query)
         || site.primaryDomain.localizedCaseInsensitiveContains(query)
     }.sorted { totals[$0.id, default: 0] > totals[$1.id, default: 0] }
-    table.reloadData()
-    if table.selectedRow < 0 {
-      table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+
+    if let selectedSiteID, !filteredSites.contains(where: { $0.id == selectedSiteID }) {
+      self.selectedSiteID = nil
+      refreshUsage()
     }
+
+    isRestoringTableSelection = true
+    table.reloadData()
+    let selectedRow = selectedSiteID.flatMap { id in
+      filteredSites.firstIndex { $0.id == id }.map { $0 + 1 }
+    } ?? 0
+    table.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
+    isRestoringTableSelection = false
   }
 
   private func dayKey(_ date: Date) -> String { UsageLedger.dayKey(for: date) }

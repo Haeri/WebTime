@@ -120,11 +120,18 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var menuRankingChangedWhileOpen = false
   private var displayedMenuSiteIDs: [String] = []
   private let idleStatusImage: NSImage = {
-    let image =
-      NSImage(systemSymbolName: "stopwatch", accessibilityDescription: "Web Time")
-      ?? NSImage()
-    image.alignmentRect = NSRect(origin: .zero, size: image.size)
+    let symbol = NSImage(systemSymbolName: "stopwatch", accessibilityDescription: "Web Time")?
+      .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 16, weight: .regular))
+    let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+      // Draw the SF Symbol in a square canvas so its visible stopwatch shape is centered in the
+      // menu-bar button without inheriting text-baseline alignment.
+      symbol?.draw(
+        in: NSRect(x: 1, y: 1, width: 16, height: 16), from: .zero,
+        operation: .sourceOver, fraction: 1)
+      return true
+    }
     image.isTemplate = true
+    image.accessibilityDescription = "Web Time"
     return image
   }()
 

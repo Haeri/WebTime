@@ -4,9 +4,10 @@
 
 # Web Time
 
-A native macOS menu-bar app that gives distracting websites daily limits. Web Time tracks and blocks locally at the DNS and network level, so the same allowance applies across browsers and apps without an account or browser extension.
+[![Build status](https://github.com/Haeri/WebTime/actions/workflows/release.yml/badge.svg)](https://github.com/Haeri/WebTime/actions/workflows/release.yml)
+[![Latest version](https://img.shields.io/github/v/release/Haeri/WebTime?display_name=tag&sort=semver)](https://github.com/Haeri/WebTime/releases/latest)
 
-[Download the latest release](../../releases/latest/download/Web-Time.dmg)
+A native macOS menu-bar app that gives distracting websites daily limits. Web Time tracks and blocks locally at the DNS and network level, so the same allowance applies across browsers and apps without an account or browser extension.
 
 ## Features
 
