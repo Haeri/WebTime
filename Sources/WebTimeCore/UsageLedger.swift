@@ -22,8 +22,7 @@ public struct UsageLedger: Sendable {
 
   /// Records at most 30 seconds per tick so sleep/wake or a stalled app never consumes hours at once.
   public mutating func tick(
-    at date: Date, activeSiteID: String?, limits: [String: TimeInterval],
-    allowOverLimit: Bool = false
+    at date: Date, activeSiteID: String?, limits: [String: TimeInterval]
   ) -> (siteID: String, seconds: TimeInterval)? {
     resetIfNeeded(at: date)
     defer { usage.lastSampleAt = date }
@@ -31,7 +30,7 @@ public struct UsageLedger: Sendable {
     else { return nil }
     let delta = max(0, min(30, date.timeIntervalSince(previous)))
     let consumed = usage.consumedBySite[activeSiteID, default: 0]
-    let applied = allowOverLimit ? delta : min(delta, max(0, limit - consumed))
+    let applied = min(delta, max(0, limit - consumed))
     usage.consumedBySite[activeSiteID] = consumed + applied
     return (activeSiteID, applied)
   }

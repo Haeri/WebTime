@@ -4,7 +4,7 @@ import WebTimeCore
 private struct UsageChartBar {
   var label: String
   var values: [TimeInterval]
-  var limitHitSiteIndices: [Int] = []
+  var limitMarkerOffsets: [Int: TimeInterval] = [:]
 }
 
 private struct UsageLegendItem {
@@ -117,11 +117,12 @@ private final class UsageChartView: NSView {
         } else {
           NSBezierPath(rect: rect).fill()
         }
-        if bar.limitHitSiteIndices.contains(valueIndex) {
+        if let markerOffset = bar.limitMarkerOffsets[valueIndex] {
           NSColor.systemRed.setStroke()
+          let markerY = y + plot.height * CGFloat(min(value, max(0, markerOffset)) / maximum)
           let limitMarker = NSBezierPath()
-          limitMarker.move(to: NSPoint(x: rect.minX - 1, y: rect.maxY))
-          limitMarker.line(to: NSPoint(x: rect.maxX + 1, y: rect.maxY))
+          limitMarker.move(to: NSPoint(x: rect.minX - 1, y: markerY))
+          limitMarker.line(to: NSPoint(x: rect.maxX + 1, y: markerY))
           limitMarker.lineWidth = 2
           limitMarker.lineCapStyle = .round
           limitMarker.stroke()
@@ -464,9 +465,16 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
       let key = dayKey(date)
       let values = history.days[key, default: [:]]
       let hits = history.limitHitHourBySite[key, default: [:]]
+      let orderedValues = orderedSites.map { values[$0.id, default: 0] }
+      let markers = [Int: TimeInterval](
+        uniqueKeysWithValues: orderedSites.indices.compactMap { index in
+          let site = orderedSites[index]
+          guard hits[site.id] != nil else { return nil }
+          return (index, min(orderedValues[index], site.dailyLimitSeconds))
+        })
       return UsageChartBar(
-        label: weekday.string(from: date), values: orderedSites.map { values[$0.id, default: 0] },
-        limitHitSiteIndices: orderedSites.indices.filter { hits[orderedSites[$0].id] != nil })
+        label: weekday.string(from: date), values: orderedValues,
+        limitMarkerOffsets: markers)
     }
     weeklyChart.selectedIndex = weekDates.firstIndex {
       calendar.isDate($0, inSameDayAs: selectedDate)
@@ -483,13 +491,25 @@ final class StatisticsWindowController: NSWindowController, NSTableViewDataSourc
     }
 
     let hours = history.hourly[dayKey(selectedDate), default: [:]]
+    let hitHours = history.limitHitHourBySite[dayKey(selectedDate), default: [:]]
+    var usageBeforeHour: [String: TimeInterval] = [:]
     hourlyChart.bars = (0..<24).map { hour in
       let values = hours[String(format: "%02d", hour), default: [:]]
-      let hits = history.limitHitHourBySite[dayKey(selectedDate), default: [:]]
-      return UsageChartBar(
+      let orderedValues = orderedSites.map { values[$0.id, default: 0] }
+      let markers = [Int: TimeInterval](
+        uniqueKeysWithValues: orderedSites.indices.compactMap { index in
+          let site = orderedSites[index]
+          guard hitHours[site.id] == hour else { return nil }
+          let offset = site.dailyLimitSeconds - usageBeforeHour[site.id, default: 0]
+          return (index, min(orderedValues[index], max(0, offset)))
+        })
+      let bar = UsageChartBar(
         label: hour % 6 == 0 ? String(format: "%02d", hour) : "",
-        values: orderedSites.map { values[$0.id, default: 0] },
-        limitHitSiteIndices: orderedSites.indices.filter { hits[orderedSites[$0].id] == hour })
+        values: orderedValues, limitMarkerOffsets: markers)
+      for (index, site) in orderedSites.enumerated() {
+        usageBeforeHour[site.id, default: 0] += orderedValues[index]
+      }
+      return bar
     }
     hourlyChart.selectedIndex = nil
   }

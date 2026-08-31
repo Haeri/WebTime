@@ -103,7 +103,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var configuration = LimiterConfiguration()
   private var ledger = UsageLedger()
   private var history = UsageHistory()
-  private var snoozes = SiteSnoozeState()
+  private var allowanceExtensions = AllowanceExtensionState()
   private var timer: Timer?
   private var interactionMonitor: Any?
   private var sampleInFlight = false
@@ -236,13 +236,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
   private func update(now: Date) {
     archiveAndResetIfNeeded(at: now)
-    if snoozes.removeExpired(at: now) { lastPolicies = nil }
     let increment = ledger.tick(
-      at: now, activeSiteID: activeSiteID, limits: limitsBySite,
-      allowOverLimit: activeSiteID.map { snoozes.isActive(siteID: $0, at: now) } ?? false)
+      at: now, activeSiteID: activeSiteID, limits: effectiveLimitsBySite)
     history.record(
       totals: ledger.usage.consumedBySite, increment: increment, at: now,
-      limits: limitsBySite)
+      limits: baseLimitsBySite)
     history.trim(keepingRecentDays: 400)
     if controlsSession.unlockedUntil != nil && !controlsAreUnlocked(at: now) { lockControls() }
     persist()
@@ -273,23 +271,32 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     }
   }
 
-  private var limitsBySite: [String: TimeInterval] {
+  private var baseLimitsBySite: [String: TimeInterval] {
     configuration.sites.reduce(into: [:]) { result, site in
       result[site.id] = site.dailyLimitSeconds
     }
   }
 
-  private func policies(allAllowed: Bool = false, at date: Date = Date()) -> [DaemonSitePolicy] {
-    configuration.sites.map { site in
-      DaemonSitePolicy(
-        id: site.id, domains: site.domains,
-        blocked: allAllowed ? false : isSiteBlocked(site, at: date))
+  private var effectiveLimitsBySite: [String: TimeInterval] {
+    configuration.sites.reduce(into: [:]) { result, site in
+      result[site.id] = allowanceExtensions.effectiveLimit(
+        siteID: site.id, baseLimit: site.dailyLimitSeconds)
     }
   }
 
-  private func isSiteBlocked(_ site: SiteConfiguration, at date: Date) -> Bool {
-    ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
-      && !snoozes.isActive(siteID: site.id, at: date)
+  private func policies(allAllowed: Bool = false) -> [DaemonSitePolicy] {
+    configuration.sites.map { site in
+      DaemonSitePolicy(
+        id: site.id, domains: site.domains,
+        blocked: allAllowed ? false : isSiteBlocked(site))
+    }
+  }
+
+  private func isSiteBlocked(_ site: SiteConfiguration) -> Bool {
+    ledger.shouldBlock(
+      siteID: site.id,
+      limit: allowanceExtensions.effectiveLimit(
+        siteID: site.id, baseLimit: site.dailyLimitSeconds))
   }
 
   private func syncPoliciesIfNeeded() {
@@ -318,7 +325,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     if ledger.usage.day != today {
       history.days[ledger.usage.day] = ledger.usage.consumedBySite
       ledger.resetIfNeeded(at: date)
-      snoozes.removeAll()
+      allowanceExtensions.removeAll()
       lastPolicies = nil
     }
   }
@@ -328,10 +335,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     let displayedSite = configuration.sites.first(where: { $0.id == activeSiteID })
     if let site = displayedSite {
       let used = ledger.consumed(siteID: site.id)
-      let usedFraction = site.dailyLimitSeconds > 0 ? min(1, used / site.dailyLimitSeconds) : 1
-      let snoozeRemaining = snoozes.remaining(siteID: site.id, at: now)
-      let remaining = snoozeRemaining > 0 ? snoozeRemaining : max(0, site.dailyLimitSeconds - used)
-      let blocked = isSiteBlocked(site, at: now)
+      let additionalAllowance = allowanceExtensions.additionalAllowance(siteID: site.id)
+      let effectiveLimit = site.dailyLimitSeconds + additionalAllowance
+      let usedFraction = effectiveLimit > 0 ? min(1, used / effectiveLimit) : 1
+      let remaining = max(0, effectiveLimit - used)
+      let blocked = isSiteBlocked(site)
       let favicon = faviconLoader.image(for: site) { [weak self] in
         self?.refreshDisplay(now: Date())
       }
@@ -339,9 +347,9 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         favicon: favicon, fallbackLetter: String(site.name.prefix(1)).uppercased(),
         remainingFraction: 1 - usedFraction, blocked: blocked)
       statusItem.button?.toolTip =
-        snoozeRemaining > 0
-        ? "\(site.name): snoozed for \(DurationText.compact(remaining))"
-        : "\(site.name): \(DurationText.compact(remaining)) remaining of \(DurationText.compact(site.dailyLimitSeconds)) · \(Int(usedFraction * 100))% used"
+        additionalAllowance > 0
+        ? "\(site.name): \(DurationText.compact(remaining)) remaining of \(DurationText.compact(effectiveLimit)) · includes \(DurationText.compact(additionalAllowance)) snooze"
+        : "\(site.name): \(DurationText.compact(remaining)) remaining of \(DurationText.compact(effectiveLimit)) · \(Int(usedFraction * 100))% used"
     } else {
       statusItem.button?.image = idleStatusImage
       statusItem.button?.toolTip =
@@ -352,17 +360,17 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
     for site in configuration.sites {
       let used = ledger.consumed(siteID: site.id)
-      let allowanceExhausted = ledger.shouldBlock(
-        siteID: site.id, limit: site.dailyLimitSeconds)
-      let snoozeRemaining = snoozes.remaining(siteID: site.id, at: now)
-      let blocked = allowanceExhausted && snoozeRemaining <= 0
+      let additionalAllowance = allowanceExtensions.additionalAllowance(siteID: site.id)
+      let effectiveLimit = site.dailyLimitSeconds + additionalAllowance
+      let blocked = ledger.shouldBlock(siteID: site.id, limit: effectiveLimit)
       let favicon = faviconLoader.image(for: site) { [weak self] in
         self?.refreshDisplay(now: Date())
       }
       siteViews[site.id]?.update(
-        name: site.name, favicon: favicon, used: used, limit: site.dailyLimitSeconds,
+        name: site.name, favicon: favicon, used: used, baseLimit: site.dailyLimitSeconds,
+        additionalAllowance: additionalAllowance,
         active: activeSiteID == site.id, blocked: blocked,
-        canSnooze: unlocked && blocked, snoozeRemaining: snoozeRemaining)
+        canSnooze: unlocked && blocked)
     }
 
     if unlocked, let until = controlsSession.unlockedUntil {
@@ -383,9 +391,12 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     let now = Date()
     guard controlsAreUnlocked(at: now),
       let site = configuration.sites.first(where: { $0.id == siteID }),
-      ledger.shouldBlock(siteID: site.id, limit: site.dailyLimitSeconds)
+      ledger.shouldBlock(
+        siteID: site.id,
+        limit: allowanceExtensions.effectiveLimit(
+          siteID: site.id, baseLimit: site.dailyLimitSeconds))
     else { return }
-    snoozes.snooze(siteID: site.id, at: now)
+    allowanceExtensions.grant(siteID: site.id)
     lastPolicies = nil
     touchControls()
     syncPoliciesIfNeeded()
@@ -585,12 +596,13 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private func activeSiteImage(
     favicon: NSImage?, fallbackLetter: String, remainingFraction: Double, blocked: Bool
   ) -> NSImage {
-    let visibleFraction = min(1, max(0, remainingFraction))
+    let visibleFraction = blocked ? 1 : min(1, max(0, remainingFraction))
     let ringColor: NSColor = blocked || visibleFraction <= 0.1 ? .systemRed : .white
     let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
       let iconRect = NSRect(x: 3.5, y: 3.5, width: 11, height: 11)
       NSGraphicsContext.saveGraphicsState()
       NSBezierPath(roundedRect: iconRect, xRadius: 2.8, yRadius: 2.8).addClip()
+      NSGraphicsContext.current?.cgContext.setAlpha(blocked ? 0.55 : 1)
       if let favicon {
         favicon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1)
       } else {

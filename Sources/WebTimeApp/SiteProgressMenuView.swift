@@ -57,8 +57,8 @@ final class SiteProgressMenuView: NSView {
   required init?(coder: NSCoder) { nil }
 
   func update(
-    name: String, favicon: NSImage?, used: TimeInterval, limit: TimeInterval, active: Bool,
-    blocked: Bool, canSnooze: Bool, snoozeRemaining: TimeInterval
+    name: String, favicon: NSImage?, used: TimeInterval, baseLimit: TimeInterval,
+    additionalAllowance: TimeInterval, active: Bool, blocked: Bool, canSnooze: Bool
   ) {
     nameLabel.stringValue = name
     nameLabel.frame.size.width = canSnooze ? 145 : 193
@@ -67,17 +67,18 @@ final class SiteProgressMenuView: NSView {
       ?? NSImage(
         systemSymbolName: "globe", accessibilityDescription: "Website icon")
     faviconView.alphaValue = blocked ? 0.55 : 1
-    let usedFraction = limit > 0 ? min(1, used / limit) : 1
+    let effectiveLimit = baseLimit + additionalAllowance
+    let usedFraction = effectiveLimit > 0 ? min(1, used / effectiveLimit) : 1
     let remainingFraction = 1 - usedFraction
-    let remaining = max(0, limit - used)
+    let remaining = max(0, effectiveLimit - used)
     progress.fraction = remainingFraction
     progress.color =
       remainingFraction <= 0.1
       ? .systemRed : (remainingFraction <= 0.25 ? .systemOrange : .systemBlue)
     detailLabel.stringValue =
-      snoozeRemaining > 0
-      ? "Snoozed \(DurationText.compact(snoozeRemaining)) · \(Int(usedFraction * 100))% used · \(DurationText.compact(limit)) set"
-      : "\(DurationText.compact(remaining)) left · \(Int(usedFraction * 100))% used · \(DurationText.compact(limit)) set"
+      additionalAllowance > 0
+      ? "Snoozed · \(DurationText.compact(remaining)) left · \(DurationText.compact(effectiveLimit)) total"
+      : "\(DurationText.compact(remaining)) left · \(Int(usedFraction * 100))% used · \(DurationText.compact(baseLimit)) set"
     snoozeButton.isHidden = !canSnooze
     if active && !blocked {
       stateView.image = NSImage(

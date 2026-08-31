@@ -93,26 +93,31 @@ expect(
   !rollover.shouldBlock(siteID: "site-a", limit: 500),
   "day rollover re-enables a website that exhausted yesterday's allowance")
 
-var snoozes = SiteSnoozeState()
-snoozes.snooze(siteID: "site-a", at: start)
-expect(snoozes.isActive(siteID: "site-a", at: start), "snooze immediately allows one website")
+var allowanceExtensions = AllowanceExtensionState()
+allowanceExtensions.grant(siteID: "site-a")
 expect(
-  snoozes.remaining(siteID: "site-a", at: start.addingTimeInterval(60)) == 14 * 60,
-  "snooze is a 15-minute wall-clock grant")
+  allowanceExtensions.additionalAllowance(siteID: "site-a") == 15 * 60,
+  "snooze grants 15 minutes of additional allowance")
 expect(
-  snoozes.removeExpired(at: start.addingTimeInterval(15 * 60))
-    && !snoozes.isActive(siteID: "site-a", at: start.addingTimeInterval(15 * 60)),
-  "snooze expires without changing the daily allowance")
+  allowanceExtensions.effectiveLimit(siteID: "site-a", baseLimit: 60) == 16 * 60,
+  "snooze extends the website's effective limit")
 var snoozedLedger = UsageLedger(
   usage: DailyUsage(
     day: UsageLedger.dayKey(for: start), consumedBySite: ["site-a": 60], lastSampleAt: start),
   now: start)
 _ = snoozedLedger.tick(
-  at: start.addingTimeInterval(5), activeSiteID: "site-a", limits: ["site-a": 60],
-  allowOverLimit: true)
+  at: start.addingTimeInterval(5), activeSiteID: "site-a",
+  limits: [
+    "site-a": allowanceExtensions.effectiveLimit(siteID: "site-a", baseLimit: 60)
+  ])
 expect(
   snoozedLedger.consumed(siteID: "site-a") == 65,
   "foreground usage during a snooze remains visible in statistics")
+expect(
+  !snoozedLedger.shouldBlock(
+    siteID: "site-a",
+    limit: allowanceExtensions.effectiveLimit(siteID: "site-a", baseLimit: 60)),
+  "a website remains available until its added allowance is consumed")
 
 expect(SiteDomains.host("example.com", matchesAny: ["example.com"]), "exact domain matches")
 expect(
