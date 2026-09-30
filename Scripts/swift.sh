@@ -8,4 +8,8 @@ if [[ "$(xcode-select -p 2>/dev/null || true)" == "/Library/Developer/CommandLin
 fi
 export CLANG_MODULE_CACHE_PATH="/private/tmp/web-time-clang-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="/private/tmp/web-time-swiftpm-cache"
+if [[ "${1:-}" == "--compiler" ]]; then
+    shift
+    exec swiftc "$@"
+fi
 exec swift "$@"

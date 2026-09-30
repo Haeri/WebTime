@@ -163,13 +163,16 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
   public var ok: Bool
   public var learnedAddressesBySite: [String: [String]]
   public var message: String?
+  public var instanceID: String?
 
   public init(
-    ok: Bool, learnedAddressesBySite: [String: [String]] = [:], message: String? = nil
+    ok: Bool, learnedAddressesBySite: [String: [String]] = [:], message: String? = nil,
+    instanceID: String? = nil
   ) {
     self.ok = ok
     self.learnedAddressesBySite = learnedAddressesBySite
     self.message = message
+    self.instanceID = instanceID
   }
 }
 

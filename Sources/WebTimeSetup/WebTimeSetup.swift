@@ -15,7 +15,7 @@ private enum SetupAction: String {
   var successMessage: String {
     switch self {
     case .install: "Web Time is installed and running."
-    case .uninstall: "Web Time was removed and the previous DNS settings were restored."
+    case .uninstall: "Web Time was removed and its DNS routes were cleared."
     }
   }
 }
@@ -53,7 +53,7 @@ private final class SetupDelegate: NSObject, NSApplicationDelegate {
     let alert = NSAlert()
     alert.messageText = "Web Time Setup"
     alert.informativeText =
-      "Install Web Time and its local DNS service, or remove Web Time and restore the previous DNS settings. macOS will ask for an administrator password."
+      "Install Web Time and its local DNS service, or remove Web Time. macOS will ask for an administrator password."
     alert.alertStyle = .informational
     alert.addButton(withTitle: "Install")
     alert.addButton(withTitle: "Uninstall…")
@@ -73,7 +73,7 @@ private final class SetupDelegate: NSObject, NSApplicationDelegate {
     let alert = NSAlert()
     alert.messageText = "Uninstall Web Time?"
     alert.informativeText =
-      "Web Time will restore the DNS settings captured during installation, then remove the app, helper, settings, and usage history."
+      "Web Time will remove its website DNS routes, app, helper, settings, and usage history. Any remaining DNS overrides from older installations will be restored."
     alert.alertStyle = .warning
     alert.addButton(withTitle: "Uninstall")
     alert.addButton(withTitle: "Cancel")

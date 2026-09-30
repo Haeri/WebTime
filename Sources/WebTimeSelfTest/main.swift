@@ -254,6 +254,28 @@ expect(
       "1.1.1.1", protectedAddresses: ["1.1.1.1"]),
   "private and explicitly protected infrastructure addresses are never blocked")
 
+var ednsQuery = query
+ednsQuery[11] = 1
+ednsQuery.append(contentsOf: [0, 0, 41, 0x04, 0xd0, 0, 0, 0, 0, 0, 0])
+expect(DNSMessage.udpPayloadSize(ednsQuery) == 1232, "EDNS UDP payload limits are honored")
+expect(DNSMessage.udpPayloadSize(query) == 512, "ordinary DNS uses a 512-byte UDP limit")
+expect(
+  DNSMessage.nxdomainResponse(for: ednsQuery)?.count == query.count,
+  "blocked replies discard EDNS bytes when clearing the additional record count")
+expect(
+  DNSMessage.serverFailureResponse(for: query)![3] & 0xf == 2,
+  "upstream outages return SERVFAIL rather than a false site block")
+var wrongType = denied
+wrongType[wrongType.count - 3] = 28
+expect(!DNSMessage.isResponse(wrongType, to: query), "responses must match the requested record type")
+var invalidLabel = query
+invalidLabel[13] = 0xff
+expect(!DNSMessage.isStandardQuery(invalidLabel), "unreadable DNS names cannot enter the proxy")
+let limitedAnswer = DNSMessage.limitingAnswerTTL(answer, to: 30)
+expect(
+  limitedAnswer[limitedAnswer.count - 7] == 30 && DNSMessage.addresses(in: limitedAnswer) == ["93.184.216.34"],
+  "positive cache lifetimes are shortened while preserving address answers")
+
 let challenge = UnlockChallenge.generate()
 expect(challenge.split(separator: " ").count == 12, "unlock challenge contains 12 words")
 expect(

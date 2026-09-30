@@ -11,7 +11,7 @@ public enum DNSMessage {
     }
     let queryType = readUInt16(data, offset)
     let queryClass = readUInt16(data, offset + 2)
-    return queryType != 0 && queryClass == 1
+    return queryType != 0 && queryClass == 1 && questionName(in: data) != nil
   }
 
   public static func questionName(in data: Data) -> String? {
@@ -33,28 +33,81 @@ public enum DNSMessage {
   }
 
   public static func nxdomainResponse(for query: Data) -> Data? {
-    guard query.count >= 12 else { return nil }
-    var response = query
-    // QR=1, preserve opcode/RD, set RA=1 and RCODE=3 (NXDOMAIN).
-    response[2] = (query[2] & 0x79) | 0x80
-    response[3] = (query[3] & 0xF0) | 0x83
-    response[6] = 0
-    response[7] = 0  // ANCOUNT
-    response[8] = 0
-    response[9] = 0  // NSCOUNT
-    response[10] = 0
-    response[11] = 0  // ARCOUNT
+    errorResponse(for: query, code: 3)
+  }
+
+  public static func serverFailureResponse(for query: Data) -> Data? {
+    errorResponse(for: query, code: 2)
+  }
+
+  public static func truncatedResponse(for query: Data) -> Data? {
+    guard var response = errorResponse(for: query, code: 0) else { return nil }
+    response[2] |= 0x02
+    return response
+  }
+
+  private static func questionEnd(_ data: Data) -> Int? {
+    guard data.count >= 12, readUInt16(data, 4) == 1 else { return nil }
+    var offset = 12
+    guard skipUncompressedName(data, offset: &offset), offset + 4 <= data.count else { return nil }
+    return offset + 4
+  }
+
+  private static func errorResponse(for query: Data, code: UInt8) -> Data? {
+    guard let end = questionEnd(query) else { return nil }
+    // Copy only the question: copying EDNS bytes while clearing ARCOUNT is malformed.
+    var response = Data(query.prefix(end))
+    response[2] = (query[2] & 0x01) | 0x80
+    response[3] = 0x80 | code
+    for offset in 6..<12 { response[offset] = 0 }
     return response
   }
 
   public static func isResponse(_ response: Data, to query: Data) -> Bool {
-    guard response.count >= 12, query.count >= 12,
+    guard let responseEnd = questionEnd(response), let queryEnd = questionEnd(query),
       response[0] == query[0], response[1] == query[1],
-      response[2] & 0x80 == 0x80,
-      let responseName = questionName(in: response),
-      let queryName = questionName(in: query)
-    else { return false }
+      response[2] & 0xf8 == 0x80,
+      let responseName = questionName(in: response), let queryName = questionName(in: query),
+      response.suffix(from: responseEnd - 4).prefix(4)
+        == query.suffix(from: queryEnd - 4).prefix(4) else { return false }
     return responseName.caseInsensitiveCompare(queryName) == .orderedSame
+  }
+
+  public static func udpPayloadSize(_ query: Data) -> Int {
+    guard let end = questionEnd(query) else { return 512 }
+    var offset = end
+    for _ in 0..<Int(readUInt16(query, 10)) {
+      guard skipName(query, offset: &offset), offset + 10 <= query.count else { return 512 }
+      if readUInt16(query, offset) == 41 {
+        return max(512, min(4_096, Int(readUInt16(query, offset + 2))))
+      }
+      offset += 10 + Int(readUInt16(query, offset + 8))
+    }
+    return 512
+  }
+
+  /// Bound positive cache lifetimes so a new lookup sees a changed allowance soon.
+  /// DNSSEC records are left untouched: rewriting signed TTLs can invalidate validation.
+  public static func limitingAnswerTTL(_ data: Data, to maximum: UInt32) -> Data {
+    guard let end = questionEnd(data) else { return data }
+    var offset = end
+    var ttlOffsets: [Int] = []
+    for _ in 0..<Int(readUInt16(data, 6)) {
+      guard skipName(data, offset: &offset), offset + 10 <= data.count else { return data }
+      let type = readUInt16(data, offset)
+      if type == 46 { return data } // RRSIG
+      ttlOffsets.append(offset + 4)
+      let length = Int(readUInt16(data, offset + 8))
+      offset += 10 + length
+      guard offset <= data.count else { return data }
+    }
+    var response = data
+    for offset in ttlOffsets {
+      let ttl = (0..<4).reduce(UInt32(0)) { ($0 << 8) | UInt32(data[offset + $1]) }
+      let limited = min(ttl, maximum)
+      for index in 0..<4 { response[offset + index] = UInt8((limited >> (24 - index * 8)) & 0xff) }
+    }
+    return response
   }
 
   /// Returns A and AAAA records anywhere in a DNS response, following compressed names.

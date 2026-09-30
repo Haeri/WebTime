@@ -111,6 +111,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   private var activeSiteID: String?
   private var daemonOnline = false
   private var lastPolicies: [DaemonSitePolicy]?
+  private var daemonInstanceID: String?
   private var controlsSession = ControlsSession()
   private var settingsController: SiteSettingsWindowController?
   private var statisticsController: StatisticsWindowController?
@@ -264,6 +265,10 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         guard let self else { return }
         self.sampleInFlight = false
         self.activeSiteID = active
+        if status?.instanceID != self.daemonInstanceID || status?.ok != true {
+          self.lastPolicies = nil
+        }
+        self.daemonInstanceID = status?.instanceID
         self.daemonOnline = status?.ok == true
         self.syncPoliciesIfNeeded()
         self.refreshDisplay(now: Date())
@@ -560,8 +565,8 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
   @objc private func quitApplication() {
     guard controlsAreUnlocked(at: Date()) else { return }
     touchControls()
-    // Leave normal DNS forwarding enabled and clear limiter-owned PF rules before quitting.
-    _ = try? daemon.send(.updatePolicies(policies(allAllowed: true)))
+    // Remove the session-owned domain routes before quitting.
+    _ = try? daemon.send(.updatePolicies([]))
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
     process.arguments = ["bootout", "gui/\(getuid())/local.web-time.agent"]

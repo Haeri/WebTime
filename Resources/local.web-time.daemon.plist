@@ -6,7 +6,6 @@
     <key>ProgramArguments</key>
     <array>
         <string>/Library/PrivilegedHelperTools/webtimed</string>
-        <string>--upstream-file=/Library/Application Support/Web Time/upstream.txt</string>
     </array>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>

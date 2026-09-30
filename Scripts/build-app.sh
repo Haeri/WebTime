@@ -42,6 +42,7 @@ cp "$STAGE_DIR/webtimed" "$PAYLOAD_DIR/.build/installer/webtimed"
 cp "$PROJECT_DIR/Resources/local.web-time.agent.plist" "$PAYLOAD_DIR/Resources/"
 cp "$PROJECT_DIR/Resources/local.web-time.daemon.plist" "$PAYLOAD_DIR/Resources/"
 cp "$PROJECT_DIR/Scripts/install.sh" "$PAYLOAD_DIR/Scripts/install.sh"
+cp "$PROJECT_DIR/Scripts/legacy-dns.sh" "$PAYLOAD_DIR/Scripts/legacy-dns.sh"
 cp "$PROJECT_DIR/Scripts/uninstall.sh" "$PAYLOAD_DIR/Scripts/uninstall.sh"
 chmod 755 \
     "$SETUP_APP_DIR/Contents/Resources/authorized-action.sh" \

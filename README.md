@@ -7,7 +7,7 @@
 [![Build status](https://github.com/Haeri/WebTime/actions/workflows/release.yml/badge.svg)](https://github.com/Haeri/WebTime/actions/workflows/release.yml)
 [![Latest version](https://img.shields.io/github/v/release/Haeri/WebTime?display_name=tag&sort=semver)](https://github.com/Haeri/WebTime/releases/latest)
 
-A native macOS menu-bar app that gives distracting websites daily limits. Web Time tracks and blocks locally at the DNS and network level, so the same allowance applies across browsers and apps without an account or browser extension.
+A native macOS menu-bar app that gives distracting websites daily limits. Web Time estimates usage from local network activity and blocks configured domains through macOS DNS, sharing allowances across browsers and apps that use the system resolver. No account or browser extension is required.
 
 ## Features
 
@@ -28,7 +28,15 @@ Web Time requires macOS 13 or later.
 
 Installation requires an administrator password because Web Time runs a local DNS service. Web Time does not currently have an Apple Developer ID and is not notarized. If macOS blocks **Web Time Setup**, click **Done**, then open **System Settings → Privacy & Security**, scroll to **Security**, and click **Open Anyway**. Confirm **Open**, then run the setup again.
 
-To remove Web Time and restore the previous DNS settings, open **Web Time Setup** and click **Uninstall**.
+To remove Web Time, open **Web Time Setup** and click **Uninstall**. Upgrading from an older version also restores network DNS settings that still point to the old Web Time proxy.
+
+## Network behavior
+
+Web Time registers temporary DNS routes only for the domains you configure. Other websites use macOS DNS directly. Allowed domains are forwarded to the current network's IPv4 or IPv6 DNS servers, including matching split-DNS VPN resolvers. Switching Wi-Fi, connecting a hotspot, or restarting the daemon does not require reinstalling or changing DNS settings.
+
+Web Time never blocks entire IP addresses: unrelated websites can share those addresses. Blocking applies to new DNS lookups; cached answers and existing connections can continue, and apps using their own encrypted DNS can bypass it. Usage attribution from network addresses is approximate on shared hosting. Precise, immediate blocking of individual pages or established connections requires browser or flow-level integration beyond this DNS implementation.
+
+See [network architecture and validation](docs/network-behavior.md) for implementation details and the device test checklist.
 
 ## Build from source
 
